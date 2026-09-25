@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+<section class="hero">
+  <div style="position:relative;z-index:1">
+    <div class="small" style="color:#A0A0AE">Lens: EY India, The AIdea of India 2025 [S23; 15% in production via S24]. Tasks scored on exposure, complementarity and intensity, classified as Automation, Augmentation and Amplification.</div>
+    <h2 class="mt-8" style="max-width:26ch">Which jobs does GenAI reshape, and which ladder level does each worker need?</h2>
+    <div class="facts">
+      <div class="fact"><div class="v">{{ ex.ey.jobs_mn }} mn</div><div class="l">Organised-sector jobs GenAI can transform by 2030</div></div>
+      <div class="fact"><div class="v">{{ ex.ey.auto }}% / {{ ex.ey.aug }}%</div><div class="l">Tasks fully automatable / significantly augmentable</div></div>
+      <div class="fact"><div class="v">{{ ex.ey.talent }}%</div><div class="l">Executives citing lack of AI talent as the primary hurdle</div></div>
+      <div class="fact"><div class="v">{{ ex.ey.prod }}%</div><div class="l">Enterprises with GenAI in production (2025)</div></div>
+    </div>
+  </div>
+  <div class="panel" style="position:relative;z-index:1;background:#23232F;border-color:#2E2E38;color:#fff">
+    <div class="form-row"><label for="adopt" style="color:#A0A0AE">GenAI adoption realised by 2030 <b id="adoptV" style="color:#FFE600"></b></label><input type="range" id="adopt" min="0.15" max="1" step="0.05" value="0.6"></div>
+    <div class="form-row mt-12"><label for="hrs" style="color:#A0A0AE">Working hours a week <b id="hrsV" style="color:#FFE600"></b></label><input type="range" id="hrs" min="40" max="54" step="1" value="45"></div>
+    <p class="small mt-12" style="color:#A0A0AE">15% of enterprises were in production in 2025 and 34% at proof of concept; 60% assumes most pilots scale by 2030.</p>
+  </div>
+</section>
+
+<section class="g g-5" id="exTiles"></section>
+
+<section class="g g-8-4">
+  <div class="panel">
+    <div class="panel-h"><div><h2>The 3A profile of each role</h2><div class="sub">Share of task time that can be automated, augmented or amplified</div></div></div>
+    <div class="chart h-420"><canvas id="aaaChart"></canvas></div>
+    {{ cite(['S23','S24'], 'EY averages: 24% automatable, 42% significantly time-reduced, 38 mn jobs; role-level shares are team estimates') }}
+  </div>
+  <div class="g" style="align-content:start">
+    <div class="panel">
+      <div class="panel-h"><div><h2>Upgrade demand by ladder level</h2><div class="sub">Lakh workers, team estimate (assumption)</div></div></div>
+      <div class="chart h-220"><canvas id="rungChart"></canvas></div>
+    {{ cite([], 'Team estimate (assumption) mapped to the L1-L4 ladder levels') }}
+    </div>
+    <div class="panel">
+      <div class="panel-h"><div><h2>By sector</h2><div class="sub">Lakh workers needing reskilling</div></div></div>
+      <div class="chart h-220"><canvas id="secChart"></canvas></div>
+    {{ cite([], 'Team estimate (assumption)') }}
+    </div>
+  </div>
+</section>
+
+<section class="panel flush">
+  <div class="panel-h" style="padding:20px 20px 0"><div><h2>Role register</h2><div class="sub">Assumption: workforce split is modelled to total EY's 38 million; role-level 3A shares are team estimates calibrated to EY's 24% and 42% averages [S23]</div></div></div>
+  <div class="tbl-wrap">
+    <table class="tbl" id="roleTable">
+      <thead><tr><th class="sortable">Role</th><th class="sortable">Sector</th><th class="sortable num">Workforce (lakh)</th><th class="sortable num">Automate</th><th class="sortable num">Augment</th><th class="sortable num">Amplify</th><th class="sortable">Posture</th><th class="sortable">Target level</th><th class="sortable num">Hours freed / wk</th><th class="sortable num">To reskill (lakh)</th><th class="sortable num">Training (mn h)</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let EX = {{ ex|tojson }};
+const P = Tower.palette;
+const RC = { L1: P.silver, L2: P.beam, L3: P.teal, L4: P.blue };
+
+function draw() {
+  const s = EX.summary;
+  const t = (l, v, d) => `<div class="tile"><div class="l">${l}</div><div class="v">${v}</div><div class="d">${d}</div></div>`;
+  exTiles.innerHTML = t("Workers in scope", Tower.fmt(s.workforce_lakh, 0) + "<small>lakh</small>", "Organised sector, 14 role families")
+    + t("Need reskilling by 2030", Tower.fmt(s.impacted_lakh, 0) + "<small>lakh</small>", `At ${Math.round(s.adoption * 100)}% adoption`)
+    + t("Task time automatable", s.auto_pct + "<small>%</small>", `Augment ${s.aug_pct}%, amplify ${s.amp_pct}%`)
+    + t("Hours freed a week", s.hours_freed_avg + "<small>h</small>", "EY estimate: 8 to 10 h for corporate workers")
+    + t("Training required", Tower.fmt(s.training_bn_hours, 2) + "<small>bn h</small>", "Across all levels (assumption)");
+
+  const rows = EX.rows;
+  Tower.chart("aaaChart", {
+    type: "bar",
+    data: { labels: rows.map(r => r.role), datasets: [
+      { label: "Automation", data: rows.map(r => +(r.auto * 100).toFixed(0)), backgroundColor: P.red, borderRadius: 2 },
+      { label: "Augmentation", data: rows.map(r => +(r.aug * 100).toFixed(0)), backgroundColor: P.beam, borderRadius: 2 },
+      { label: "Amplification", data: rows.map(r => +(r.amp * 100).toFixed(0)), backgroundColor: P.teal, borderRadius: 2 }
+    ]},
+    options: { indexAxis: "y", plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.x}% of task time` } } },
+      scales: { x: { stacked: true, max: 100, grid: { color: Tower.css("--line-soft") } }, y: { stacked: true, grid: { display: false } } } }
+  });
+  const br = EX.by_rung;
+  Tower.chart("rungChart", {
+    type: "bar",
+    data: { labels: Object.keys(br), datasets: [{ data: Object.values(br), backgroundColor: Object.keys(br).map(k => RC[k]), borderRadius: 3 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { grid: { color: Tower.css("--line-soft") } }, x: { grid: { display: false } } } }
+  });
+  const bs = EX.by_sector;
+  Tower.chart("secChart", {
+    type: "doughnut",
+    data: { labels: Object.keys(bs), datasets: [{ data: Object.values(bs), backgroundColor: [P.beam, P.blue, P.teal, P.magenta, P.orange, P.green, P.silver, P.red, P.lilac], borderColor: Tower.css("--panel"), borderWidth: 2 }] },
+    options: { cutout: "58%", plugins: { legend: { position: "right", labels: { font: { size: 11 } } } } }
+  });
+  document.querySelector("#roleTable tbody").innerHTML = rows.map(r => `<tr>
+    <td><b>${r.role}</b></td><td>${r.sector}</td><td class="num" data-v="${r.workforce}">${r.workforce}</td>
+    <td class="num" data-v="${r.auto}">${Math.round(r.auto * 100)}%</td><td class="num" data-v="${r.aug}">${Math.round(r.aug * 100)}%</td><td class="num" data-v="${r.amp}">${Math.round(r.amp * 100)}%</td>
+    <td><span class="chip"><i style="background:${r.posture.startsWith("Automate") ? P.red : r.posture.startsWith("Augment") ? P.beam : P.teal}"></i>${r.posture}</span></td>
+    <td data-v="${r.rung}"><span class="chip"><i style="background:${RC[r.rung_code]}"></i>${r.rung_code}</span></td>
+    <td class="num" data-v="${r.hours_freed}">${r.hours_freed}</td><td class="num" data-v="${r.impacted}"><b>${r.impacted}</b></td><td class="num" data-v="${r.train_mn_hours}">${Tower.fmt(r.train_mn_hours, 0)}</td></tr>`).join("");
+}
+
+let tmr;
+async function refresh() {
+  adoptV.textContent = Math.round(adopt.value * 100) + "%"; hrsV.textContent = hrs.value + " h";
+  clearTimeout(tmr);
+  tmr = setTimeout(async () => { try { EX = { ...EX, ...(await Tower.api("/api/exposure", { adoption: +adopt.value, hours_week: +hrs.value })) }; draw(); } catch (e) { Tower.toast(e.message); } }, 150);
+}
+document.addEventListener("DOMContentLoaded", () => {
+  adoptV.textContent = "60%"; hrsV.textContent = "45 h";
+  draw();
+  adopt.addEventListener("input", refresh); hrs.addEventListener("input", refresh);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+<section class="g g-8-4">
+  <div class="panel">
+    <div class="panel-h">
+      <div><h2>Urgency × impact</h2><div class="sub">Qualitative team assessment on scale, economic value, time-sensitivity, feasibility and people affected; not an external score. {{ tag('ass') }} Select a bubble.</div></div>
+    </div>
+    <div class="matrix-wrap"><canvas id="matrixChart" aria-label="Urgency versus impact matrix"></canvas></div>
+    {{ cite([], 'Qualitative team placement; failure-mode evidence below carries source IDs') }}
+    <div class="row mt-12">
+      <div class="form-row" style="min-width:200px;flex:1"><label for="uCut">Urgency threshold <b id="uVal">7.0</b></label><input type="range" id="uCut" min="5" max="9" step="0.1" value="7"></div>
+      <div class="form-row" style="min-width:200px;flex:1"><label for="iCut">Impact threshold <b id="iVal">7.0</b></label><input type="range" id="iCut" min="5" max="9" step="0.1" value="7"></div>
+    </div>
+  </div>
+  <div class="panel quad-list" id="quadLists"></div>
+</section>
+
+<section class="panel">
+  <div class="panel-h"><div><h2>Five failure modes break the chain from learning to work</h2><div class="sub">Each is evidenced and mapped to the interventions that fix it</div></div></div>
+  <div class="g" style="gap:10px">
+    {% for f in fms %}
+    <div class="gate fail" style="align-items:center">
+      <div class="gd" style="background:#2E2E38">{{ loop.index }}</div>
+      <div style="flex:1"><h4>{{ f.id }} {{ f.name }} <span class="muted small" style="font-weight:500">hurts most: {{ f.hurts }}</span></h4><p>{{ f.evidence }} {{ src(f.srcs) }}</p></div>
+      <div class="row" style="flex:none">{{ tag(f.cls) }}{% for i in INTS if f.id in i.fixes %}<a class="chip" href="/interventions#{{ i.id }}">{{ i.id }}</a>{% endfor %}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel" style="background:var(--ink);color:#fff;border-color:#2A2A36">
+  <div class="panel-h"><div><h2 style="color:#FFE600">Root cause: incentives</h2><div class="sub" style="color:#A0A0AE">Schemes pay for seats, so they measure seats {{ tag('obs') }} {{ src(inc.srcs) }}</div></div></div>
+  <div class="g g-4">
+    <div><div class="big-dial" style="font-size:40px">{{ inc.pmkvy_placed }}%</div><div class="small" style="color:#C4C4CD">of PMKVY candidates placed since 2015, after ₹{{ '{:,}'.format(inc.pmkvy_spent_cr) }} Cr utilised</div></div>
+    <div><div class="big-dial" style="font-size:40px">Delinked</div><div class="small" style="color:#C4C4CD">PMKVY 4.0 dropped placement from its design</div></div>
+    <div><div class="big-dial" style="font-size:40px">{{ inc.women_retained_3m }} in 100</div><div class="small" style="color:#C4C4CD">women from skilling programmes still in a job after 3 months (pre-bond)</div></div>
+    <div><div class="big-dial" style="font-size:40px">{{ inc.sib_joined }}%</div><div class="small" style="color:#C4C4CD">of {{ '{:,}'.format(inc.sib_trained) }}+ Skill Impact Bond trainees joined jobs ({{ inc.sib_women }}% women); outcome-funded</div></div>
+  </div>
+  <p class="small mt-12" style="color:#A0A0AE">{{ inc.caveat }}</p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PR = {{ priorities|tojson }};
+const P = Tower.palette;
+const QC = { "Act now": P.red, "Build steadily": P.blue, "Quick wins": P.orange, "Sustain": P.grey };
+let uCut = 7, iCut = 7;
+const quad = (u, i) => u >= uCut && i >= iCut ? "Act now" : u < uCut && i >= iCut ? "Build steadily" : u >= uCut ? "Quick wins" : "Sustain";
+const plug = { id: "q", beforeDraw(ch) { const { ctx, chartArea: a, scales: { x, y } } = ch; const cx = x.getPixelForValue(uCut), cy = y.getPixelForValue(iCut);
+    ctx.save(); [[cx, a.top, a.right - cx, cy - a.top, "rgba(255,65,54,.07)", "Act now", 0], [a.left, a.top, cx - a.left, cy - a.top, "rgba(24,140,229,.07)", "Build steadily", 1], [cx, cy, a.right - cx, a.bottom - cy, "rgba(255,109,0,.06)", "Quick wins", 2], [a.left, cy, cx - a.left, a.bottom - cy, "rgba(116,116,128,.06)", "Sustain", 3]].forEach(([fx, fy, w, h, c, l, k]) => {
+      ctx.fillStyle = c; ctx.fillRect(fx, fy, w, h); ctx.fillStyle = Tower.css("--text-3"); ctx.font = "700 12px " + Chart.defaults.font.family;
+      ctx.textAlign = k % 2 === 0 ? "right" : "left"; ctx.fillText(l, k % 2 === 0 ? a.right - 10 : a.left + 10, k < 2 ? a.top + 18 : a.bottom - 10); });
+    ctx.strokeStyle = Tower.css("--beam"); ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(cx, a.top); ctx.lineTo(cx, a.bottom); ctx.moveTo(a.left, cy); ctx.lineTo(a.right, cy); ctx.stroke(); ctx.restore(); },
+  afterDatasetsDraw(ch) { const { ctx } = ch; ctx.save(); ctx.font = "600 11.5px " + Chart.defaults.font.family; ctx.fillStyle = Tower.css("--text");
+    ch.getDatasetMeta(0).data.forEach((pt, i) => ctx.fillText(PR[i].name, pt.x + 12, pt.y + 4)); ctx.restore(); } };
+function openItem(i) {
+  const p = PR[i];
+  Tower.drawer.open(`<span class="chip">${p.id}</span> <span class="chip">${quad(p.urgency, p.impact)}</span>
+    <h2 style="font-size:22px;margin:12px 0 6px">${p.name}</h2>
+    <p class="muted small">Urgency ${p.urgency}, impact ${p.impact} (team assessment)</p>
+    ${p.note ? `<p class="mt-12">${p.note}</p>` : ""}
+    <h3 class="mt-16" style="font-size:13px">Failure modes</h3><div class="pill-row mt-8">${p.fm.map(f => `<span class="chip">${f}</span>`).join("") || '<span class="muted small">None</span>'}</div>
+    <h3 class="mt-16" style="font-size:13px">Interventions</h3><div class="pill-row mt-8">${p.levers.map(l => `<a class="btn" href="/interventions#${l}">${l}</a>`).join("") || '<span class="muted small">Sustain existing programmes</span>'}</div>`);
+}
+function render() {
+  Tower.chart("matrixChart", { type: "bubble",
+    data: { datasets: [{ data: PR.map(p => ({ x: p.urgency, y: p.impact, r: 8 + p.levers.length * 3 })), backgroundColor: PR.map(p => QC[quad(p.urgency, p.impact)] + "CC"), borderColor: PR.map(p => QC[quad(p.urgency, p.impact)]) }] },
+    options: { layout: { padding: { right: 30 } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${PR[c.dataIndex].name}` } } },
+      onClick: (e, els) => { if (els.length) openItem(els[0].index); },
+      scales: { x: { min: 4, max: 10, title: { display: true, text: "Urgency (time-sensitivity × people affected)" }, grid: { color: Tower.css("--line-soft") } }, y: { min: 4, max: 10, title: { display: true, text: "Impact (scale × value)" }, grid: { color: Tower.css("--line-soft") } } } },
+    plugins: [plug] });
+  const g = { "Act now": [], "Build steadily": [], "Quick wins": [], "Sustain": [] };
+  PR.forEach((p, i) => g[quad(p.urgency, p.impact)].push([p, i]));
+  quadLists.innerHTML = Object.entries(g).map(([q, l]) => `<div style="margin-bottom:16px"><h3><i style="width:10px;height:10px;border-radius:50%;background:${QC[q]};display:inline-block"></i>${q} <span class="muted small">(${l.length})</span></h3><ul>${l.map(([p, i]) => `<li data-i="${i}"><span>${p.name}</span><span class="muted">${p.levers.join(" ")}</span></li>`).join("") || '<li class="muted">None</li>'}</ul></div>`).join("");
+  document.querySelectorAll("#quadLists li[data-i]").forEach(li => li.addEventListener("click", () => openItem(+li.dataset.i)));
+}
+document.addEventListener("DOMContentLoaded", () => {
+  render();
+  const uCut_el = document.getElementById("uCut"), iCut_el = document.getElementById("iCut");
+  uCut_el.addEventListener("input", e => { uCut = +e.target.value; uVal.textContent = uCut.toFixed(1); render(); });
+  iCut_el.addEventListener("input", e => { iCut = +e.target.value; iVal.textContent = iCut.toFixed(1); render(); });
+});
+</script>
+{% endblock %}

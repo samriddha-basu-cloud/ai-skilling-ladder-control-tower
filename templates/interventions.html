@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+<section class="g g-4-8">
+  <div class="rec-list" id="recList">
+    {% for i in ints %}{% set line = sim.budget.lines|selectattr('int','equalto',i.id)|first %}
+    <div class="rec-item" data-id="{{ i.id }}" tabindex="0">
+      <div class="clr" style="background:{{ i.color }}"></div>
+      <div><h3>{{ i.id }} {{ i.title }}</h3><div class="meta">Fixes {{ i.fixes|join(', ') }}</div></div>
+      <div class="small" style="text-align:right"><b>₹{{ line.amount if line else 0 }} Cr</b><div class="muted">pilot</div></div>
+    </div>
+    {% endfor %}
+    <div class="panel small muted">None of these is a new platform. Each rides on rails that exist today. Pilot amounts are internal assumptions {{ tag('ass') }}</div>
+  </div>
+  <div class="panel rec-detail beam-top" id="recDetail" aria-live="polite"></div>
+</section>
+
+<section class="g g-2">
+  <div class="panel flush">
+    <div class="panel-h" style="padding:20px 20px 0"><div><h2>MECE check: every failure mode has at least two levers</h2><div class="sub">Rows are interventions, columns are failure modes</div></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Intervention</th>{% for f in fms %}<th style="text-align:center" title="{{ f.name }}">{{ f.id }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for i in ints %}<tr><td><b>{{ i.id }}</b> {{ i.short }}</td>{% for f in fms %}<td style="text-align:center">{% if f.id in i.fixes %}<span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:{{ i.color }}"></span>{% else %}<span class="muted">.</span>{% endif %}</td>{% endfor %}</tr>{% endfor %}
+      <tr><td><b>Levers per failure mode</b></td>{% for f in fms %}<td style="text-align:center">{% set ns = namespace(c=0) %}{% for i in ints %}{% if f.id in i.fixes %}{% set ns.c = ns.c + 1 %}{% endif %}{% endfor %}<b>{{ ns.c }}</b></td>{% endfor %}</tr></tbody>
+    </table></div>
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>Outcome-based provider payment</h2><div class="sub">Share of each fee by milestone (I2) {{ tag('ass') }}</div></div></div>
+    <div class="chart h-220"><canvas id="payChart"></canvas></div>
+    {{ cite([], 'Milestone split 15/20/25/20/20 from workbook Framework, Intervention 2 (internal assumption)') }}
+    <p class="small mt-8"><b>65%</b> of each fee is released only after verified competency, an applied project and a work outcome. Payments are weighted up for women, PwD, rural and first-generation learners so providers do not cherry-pick.</p>
+    <div class="alert amber mt-12"><span class="stripe"></span><div><h4>Why: India's own evidence {{ tag('obs') }}</h4><p>PMKVY placed {{ inc.pmkvy_placed }}% of candidates; the outcome-funded Skill Impact Bond saw {{ inc.sib_joined }}% of {{ '{:,}'.format(inc.sib_trained) }}+ trainees join jobs. {{ inc.caveat }} {{ src(inc.srcs) }}</p></div></div>
+  </div>
+</section>
+
+<section class="panel flush">
+  <div class="panel-h" style="padding:20px 20px 0"><div><h2>What peers and research teach, and how we use it</h2><div class="sub">We adapt, we do not copy {{ tag('ben') }}</div></div></div>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Where</th><th>Programme or study</th><th>Verified facts</th><th>Lesson</th><th>Used in</th></tr></thead>
+    <tbody>{% for b in bench %}<tr><td><b>{{ b.where }}</b></td><td>{{ b.what }}</td><td style="max-width:360px">{{ b.facts }} {{ src(b.src) }}{% if b.added %} <span class="muted small">(added in 3.0)</span>{% endif %}</td><td>{{ b.lesson }}</td><td>{{ b.use }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const INTS = {{ ints|tojson }};
+const FMS = Object.fromEntries({{ fms|tojson }}.map(f => [f.id, f]));
+const LINES = {{ sim.budget.lines|tojson }};
+function show(id) {
+  const r = INTS.find(x => x.id === id) || INTS[0];
+  document.querySelectorAll(".rec-item").forEach(e => e.classList.toggle("sel", e.dataset.id === r.id));
+  const line = LINES.find(l => l.int === r.id);
+  recDetail.innerHTML = `<div class="row"><span class="chip"><i style="background:${r.color}"></i>${r.id}</span>${line ? `<span class="chip">Pilot line: ${line.line}, ₹${line.amount} Cr</span>` : ""}</div>
+    <h2 class="mt-12">${r.title}</h2>
+    <p class="lead">${r.mechanism}</p>
+    <ul class="impact-list mt-16"><li>${r.outcome}</li></ul>
+    <dl class="kv mt-16">
+      <dt>Fixes</dt><dd><div class="pill-row">${r.fixes.map(f => `<a class="chip" href="/matrix">${f} ${FMS[f].name}</a>`).join("")}</div></dd>
+      <dt>Rides on</dt><dd><div class="pill-row">${r.rails.map(x => `<span class="chip">${x}</span>`).join("")}</div></dd>
+      <dt>Owner</dt><dd>${r.owner}</dd>
+      ${line ? `<dt>Pilot basis</dt><dd>${line.basis}</dd>` : ""}
+    </dl>`;
+  if (location.hash !== "#" + r.id) history.replaceState(null, "", "#" + r.id);
+}
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".rec-item").forEach(e => { e.addEventListener("click", () => show(e.dataset.id)); e.addEventListener("keydown", ev => { if (ev.key === "Enter") show(e.dataset.id); }); });
+  show((location.hash || "#I1").slice(1));
+  const P = Tower.palette;
+  Tower.chart("payChart", { type: "bar",
+    data: { labels: ["Fee"], datasets: [["Enrolment", 15, P.silver], ["Completion", 20, P.grey], ["Competency", 25, P.beam], ["Applied project", 20, "#FFD100"], ["Work outcome", 20, "#2E2E38"]].map(([n, v, c]) => ({ label: n, data: [v], backgroundColor: c })) },
+    options: { indexAxis: "y", plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.x}%` } } },
+      scales: { x: { stacked: true, max: 100, grid: { color: Tower.css("--line-soft") } }, y: { stacked: true, display: false } } } });
+});
+</script>
+{% endblock %}

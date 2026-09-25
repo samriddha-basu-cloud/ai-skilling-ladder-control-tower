@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+{% set k = sim.kpi %}
+<div class="row no-print"><span class="spacer"></span><button class="btn" onclick="window.print()">Print or save as PDF</button></div>
+<article class="panel brief-page beam-top">
+  <div class="small muted">Executive brief | AI Skill Ladder 3.0 | Team Vertex | Scenario: {{ active_scenario.name }} | {{ now }}</div>
+  <h1 style="font-size:26px;margin:10px 0 6px">India has built the AI-learning rails. Now build the bridge from learning to verified work.</h1>
+  <p class="lead">A national learning-to-earning architecture that converts AI access into verified capability, workplace application and career mobility, measured by one North Star and scaled only on evidence.</p>
+
+  <h2 class="mt-16" style="font-size:16px">1. The problem is conversion, not access</h2>
+  <p>Access is at scale: {{ H.yuva.value }} YUVA AI for ALL enrolments {{ src(['S09']) }}, 34 lakh+ FutureSkills PRIME registrations and {{ H.sidh.value }} SIDH candidates {{ src(['S01','S02']) }}. But FSP certifies 58% of enrolees and SOAR about 20% {{ src(['S01','S02']) }}, and no public release reports verified competence, placement or productivity. Only {{ H.naps_ai.value }} apprentices have trained in AI roles under NAPS-2 {{ src(['S04']) }}. Demand is real: GenAI could transform 38 mn organised-sector jobs by 2030 {{ src(['S23']) }}.</p>
+  <p class="mt-8">Five failure modes break the chain: {% for f in fms %}{{ f.id }} {{ f.name }}{% if not loop.last %}; {% endif %}{% endfor %}. Root cause: schemes pay for seats (PMKVY 17.7% placed) while outcome funding shows what is possible (Skill Impact Bond 73% joined jobs) {{ src(['S26','S28']) }}.</p>
+
+  <h2 class="mt-16" style="font-size:16px">2. The solution: a six-level ladder and seven interventions on existing rails</h2>
+  <p>L0 Awareness to L5 Leader/Governor, each assessed on technical, non-technical and responsible AI. Interventions: {% for i in ints %}{{ i.id }} {{ i.title }}{% if not loop.last %}; {% endif %}{% endfor %}. Every step writes evidence to the AI Skill Passport; AI runs the system, humans make every high-stakes call.</p>
+
+  <h2 class="mt-16" style="font-size:16px">3. Prove it: ₹290 Cr, 12 to 18 months, seven states {{ tag('ass') }}</h2>
+  <p>Tamil Nadu and Andhra Pradesh (volume), Karnataka and Odisha (conversion), Uttar Pradesh (scale, North), Bihar and Assam (catch-up, North-East), each with a comparison district. In the active scenario, {{ '{:,}'.format(sim.params.entrants) }} entrants yield {{ '{:,}'.format(sim.verified) }} verified converts: VACR {{ k.vacr }}%, cost ₹{{ '{:,}'.format(k.cost_per_convert or 0) }} per convert, about {{ sim.econ.months_of_earnings }} months of average urban salaried earnings {{ src(['S30']) }}. Five-year envelope ₹6,500 Cr; central share {{ env.central_pct_msde }}% of MSDE's FY27 budget a year {{ src(['S11']) }}. No manufactured ROI.</p>
+
+  <h2 class="mt-16" style="font-size:16px">4. Measure and decide</h2>
+  <table class="tbl mt-8"><thead><tr><th>KPI</th><th>Baseline</th><th class="num">Target</th><th class="num">Projected</th></tr></thead>
+    <tbody>{% for r in rows %}<tr><td>{{ r.name }}</td><td class="small">{{ r.baseline }}</td><td class="num">{{ '≤' if r.cmp == '<=' else '≥' }}{% if r.unit == '₹' %}₹{{ '{:,}'.format(r.target) }}{% else %}{{ r.target }}%{% endif %}</td><td class="num">{% if r.projected is none %}pilot{% elif r.unit == '₹' %}₹{{ '{:,}'.format(r.projected) }}{% else %}{{ r.projected }}%{% endif %}</td></tr>{% endfor %}</tbody></table>
+  <p class="mt-8">Gates passed in this scenario: {{ sim.gates_passed }} of 6 ({% for g in sim.gates %}{{ g.id }} {{ 'pass' if g.pass else 'fail' }}{% if not loop.last %}, {% endif %}{% endfor %}). Note: at the target floors (completion 70% × competency 60%) VACR is capped at {{ sim.consistency.floor_ceiling }}%, so we manage to an operating plan of about 76% and 73%.</p>
+
+  <h2 class="mt-16" style="font-size:16px">5. Decisions requested today</h2>
+  <ol style="margin:6px 0 0 18px;display:grid;gap:4px">
+    <li>Approve the ₹290 Cr, 12 to 18-month proof of value in seven states.</li>
+    <li>Launch the national AI competency taxonomy, Skill Graph and Passport on existing rails.</li>
+    <li>Fund AI apprenticeships and outcome-linked provider contracts.</li>
+    <li>Make independent evaluation (VACR and six gates) the only route to national scale.</li>
+  </ol>
+  <p class="small muted mt-16">All budgets are internal case assumptions and proposed targets, not Government of India allocations. Sources listed at /sources.</p>
+  {{ cite(['S01','S02','S04','S09','S11','S23','S26','S28','S30'], 'Workbook: Data_Verified, Budget_Model, KPIs_Targets') }}
+</article>
+{% endblock %}

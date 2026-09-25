@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+{% set k = sim.kpi %}
+<section class="hero">
+  <div style="position:relative;z-index:1">
+    <div class="small" style="color:#A0A0AE">EY Young Leaders 2026 | Final round | Team Vertex</div>
+    <h2 class="mt-8" style="max-width:24ch">India has built the AI-learning rails. Now build the bridge to verified work.</h2>
+    <p>A conversion problem, not an access problem. The tower tracks one North Star, VACR, through a ₹290 Cr proof of value in seven states, and lets you stress every assumption before a rupee scales.</p>
+    <div class="facts">
+      <div class="fact"><div class="v">{{ H.yuva.value }}</div><div class="l">YUVA AI for ALL enrolments {{ src(['S09']) }}</div></div>
+      <div class="fact"><div class="v">{{ H.soar.value }}</div><div class="l">of SOAR enrolees certified {{ src(['S02']) }}</div></div>
+      <div class="fact"><div class="v">{{ H.naps_ai.value }}</div><div class="l">AI-role apprentices under NAPS-2 {{ src(['S04']) }}</div></div>
+      <div class="fact"><div class="v">{{ demand.jobs_mn }} mn</div><div class="l">jobs GenAI could transform by 2030 {{ src(['S23']) }}</div></div>
+    </div>
+  </div>
+  <div style="position:relative;z-index:1">
+    <div class="small" style="color:#A0A0AE;margin-bottom:10px">FutureSkills PRIME, cumulative (lakh) {{ tag('obs') }} {{ src(['S01']) }}</div>
+    {% for lbl, v, c in [('Registered', 34, '#E6E6EE'), ('Enrolled / trained', 23, '#C9C9D2'), ('Completed / certified', 13, '#FFE600')] %}
+    <div class="funnel-row" style="grid-template-columns:150px 1fr"><span class="lbl" style="color:#fff">{{ lbl }}</span><div><div class="bar" style="width:{{ v / 34 * 100 }}%;background:{{ c }}">{{ v }} lakh+</div></div></div>
+    {% endfor %}
+    <div class="funnel-row" style="grid-template-columns:150px 1fr"><span class="lbl" style="color:#FFE600;font-weight:700">Verified in work</span><div><div class="bar" style="width:100%;background:transparent;border:1.5px dashed #FFE600;color:#FFE600;font-style:italic">Not reported in any public release</div></div></div>
+    <div class="small" style="color:#8C8C99">All emerging-tech courses, not AI only. Certified ÷ enrolled ≈57% on rounded headline figures (D23); {{ nat.rate }}% on the state table {{ tag('der') }}</div>
+    {{ cite(['S01'], 'PIB/MeitY FutureSkills PRIME release, Lok Sabha reply 12 Aug 2026', 'D02-D04') }}
+  </div>
+</section>
+
+<section class="g g-5">
+  <div class="tile"><div class="l">VACR, active scenario {{ tag('tgt') }}</div><div class="v">{{ k.vacr }}<small>%</small></div><div class="d"><span class="{{ 'up' if k.vacr >= 40 else 'down' }}">Target ≥40%</span> {{ active_scenario.name }}</div></div>
+  <div class="tile"><div class="l">Verified converts in pilot {{ tag('ass') }}</div><div class="v">{{ '{:,}'.format(sim.verified) }}</div><div class="d">of {{ '{:,}'.format(sim.params.entrants) }} entrants</div></div>
+  <div class="tile"><div class="l">Cost per verified convert {{ tag('der') }}</div><div class="v">₹{{ '{:,}'.format(sim.econ.cost_per_convert or 0) }}</div><div class="d"><span class="{{ 'up' if (sim.econ.cost_per_convert or 9e9) <= sim.econ.band else 'down' }}">Band ≤₹{{ '{:,}'.format(sim.econ.band) }}</span></div></div>
+  <div class="tile"><div class="l">Break-even, months of earnings {{ tag('der') }}</div><div class="v">{{ sim.econ.months_of_earnings }}</div><div class="d">at ₹24,434/month urban salaried {{ src(['S30']) }}</div></div>
+  <div class="tile"><div class="l">Evidence gates passed</div><div class="v">{{ sim.gates_passed }}<small>/ 6</small></div><div class="d">{% for g in sim.gates %}<span class="chip" style="padding:0 6px"><i style="background:{{ '#2DB757' if g.pass else '#FF4136' }}"></i>{{ g.id }}</span>{% endfor %}</div></div>
+</section>
+
+<section class="g g-8-4">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Pilot conversion funnel</h2><div class="sub">Active scenario. Every stage rate is an input you can change in the pilot simulator. {{ tag('ass') }}</div></div><div class="actions"><a class="btn" href="/simulator">Open simulator</a></div></div>
+    {% set n0 = sim.funnel[0].n %}
+    {% for f in sim.funnel %}
+    <div class="funnel-row"><span class="lbl">{{ f.stage }}</span><div><div class="bar" style="width:{{ [f.n / n0 * 100, 4]|max }}%;background:{{ '#FFE600' if loop.index == 5 else ('#2E2E38' if loop.index < 5 else '#747480') }};color:{{ '#1A1A24' if loop.index == 5 else '#fff' }}">{{ '{:,}'.format(f.n) }}</div></div><span class="rt">{% if f.step %}{{ (f.rate * 100)|round(1) }}% of prior{% else %}entrants{% endif %}</span></div>
+    {% endfor %}
+    <p class="small muted mt-8">VACR = workplace-verified ÷ entrants = {{ k.vacr }}%. Transition = transitioned ÷ entrants = {{ k.transition }}%.</p>
+    {{ cite([], 'Pilot entrants, stage rates and budget are internal assumptions (workbook Budget_Model); VACR target from KPIs_Targets') }}
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>Signals</h2><div class="sub">What needs a decision</div></div></div>
+    <div class="alerts">{% for a in signals %}<a class="alert {{ a.level }}" href="{{ a.link }}"><span class="stripe"></span><div><h4>{{ a.title }}</h4><p>{{ a.body }}</p></div></a>{% endfor %}</div>
+  </div>
+</section>
+
+<section class="g g-3">
+  <div class="panel">
+    <div class="panel-h"><div><h2>The rails already exist</h2><div class="sub">Official figures {{ tag('obs') }}</div></div></div>
+    <div class="g g-2" style="gap:10px">
+      {% for key in ['indiaai', 'sidh', 'apaar', 'naps', 'pmsetu', 'labs'] %}{% set h = H[key] %}
+      <div style="background:var(--panel-2);border-radius:6px;padding:10px 12px"><div style="font-weight:800;font-size:16px">{{ h.value }}</div><div class="small muted">{{ h.label }} {{ src([h.src]) }} <span class="muted">{{ h.dv }}</span></div></div>
+      {% endfor %}
+    </div>
+    {{ cite(['S06','S02','S05','S01'], '', 'Data_Verified') }}
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>Certification rate by state</h2><div class="sub">FSP, states with 20k+ enrolled; pilot states in yellow {{ tag('der') }} {{ src(['S01']) }}</div></div></div>
+    <div class="chart h-300"><canvas id="stateRate"></canvas></div>
+    {{ cite(['S01'], 'Certification rate derived from the state table', 'FSP_State_Data') }}
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>Where India works</h2><div class="sub">Share of workforce {{ tag('obs') }} {{ src(['S25']) }}</div></div></div>
+    <div class="chart h-220"><canvas id="workChart"></canvas></div>
+    <p class="small muted mt-8">43% in agriculture and about 15% in firms with 20+ workers: most learners have no employer L&D, so hubs, CSCs and voice delivery matter.</p>
+    {{ cite(['S25'], 'Rounded to 43/42/15') }}
+  </div>
+</section>
+
+
+<section class="g g-4">
+  <div class="panel">
+    <div class="panel-h"><div><h2>FSP funding, ₹ Cr</h2><div class="sub">Central Sector Scheme allocation {{ tag('obs') }}</div></div></div>
+    <div class="chart h-220"><canvas id="fundChart"></canvas></div>
+    {{ cite(['S01'], '', 'D08') }}
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>YUVA AI for ALL</h2><div class="sub">Progress to the 1-crore goal {{ tag('der') }}</div></div></div>
+    <div class="chart h-220" style="position:relative"><canvas id="yuvaChart"></canvas><div style="position:absolute;left:0;right:0;bottom:22px;text-align:center"><div style="font-size:30px;font-weight:800" id="yuvaV">85.3%</div><div class="small muted">85.27 lakh of 1 crore</div></div></div>
+    {{ cite(['S09','S07'], 'Secondary report of a govt figure', 'D21, D26') }}
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>SOAR: enrolled vs certified</h2><div class="sub">As on 22 Jul 2026 {{ tag('obs') }}</div></div></div>
+    <div class="chart h-220"><canvas id="soarChart"></canvas></div>
+    {{ cite(['S02'], '≈20% certified', 'D12, D13, D25') }}
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>ITIs: sites for hubs</h2><div class="sub">Number of ITIs {{ tag('obs') }}</div></div></div>
+    <div class="chart h-220"><canvas id="itiChart"></canvas></div>
+    {{ cite(['S05'], '120 Institutes for Training of Trainers', 'D18') }}
+  </div>
+</section>
+
+<section class="g g-4">
+  <a class="tile" href="/exposure" style="text-decoration:none"><div class="l">EY AIdea of India 2025 {{ tag('ben') }}</div><div class="v">{{ demand.auto }}% | {{ demand.aug }}%</div><div class="d">task time fully automatable | sharply reduced <span class="srcref">S23</span></div></a>
+  <a class="tile" href="/strategy" style="text-decoration:none"><div class="l">₹6,500 Cr five-year envelope {{ tag('ass') }}</div><div class="v">₹{{ '{:,}'.format(env.per_role_ready) }}</div><div class="d">per role-ready learner; central share {{ env.central_pct_msde }}% of MSDE FY27</div></a>
+  <a class="tile" href="/value" style="text-decoration:none"><div class="l">Long-Term Value balance {{ tag('ass') }}</div><div class="v">{{ ltv.balance }}<small>%</small></div><div class="d">human {{ ltv.realised.human }}, citizen {{ ltv.realised.citizen }}, societal {{ ltv.realised.societal }}, financial {{ ltv.realised.financial }}</div></a>
+  <a class="tile" href="/operating" style="text-decoration:none"><div class="l">Change readiness (Humans@Center) {{ tag('ass') }}</div><div class="v">{{ chg.readiness }}</div><div class="d">{{ chg.band }}; weakest: {{ chg.weakest|join(', ') }}</div></a>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ST = {{ states|tojson }};
+const P = Tower.palette;
+const FUND = {{ fund|tojson }}, ITI = {{ iti|tojson }};
+document.addEventListener("DOMContentLoaded", () => {
+  Tower.chart("fundChart", { type: "bar", data: { labels: FUND.labels, datasets: [{ data: FUND.values, backgroundColor: FUND.values.map((v, i) => i === FUND.values.length - 1 ? P.beam : P.grey), borderRadius: 3 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ₹${c.parsed.y} Cr` } } }, scales: { y: { grid: { color: Tower.css("--line-soft") } }, x: { grid: { display: false } } } } });
+  Tower.chart("yuvaChart", { type: "doughnut", data: { labels: ["Enrolled", "To goal"], datasets: [{ data: [85.27, 14.73], backgroundColor: [P.beam, Tower.css("--panel-2")], borderWidth: 0 }] },
+    options: { rotation: -90, circumference: 180, cutout: "72%", plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${c.parsed} lakh` } } } } });
+  Tower.chart("soarChart", { type: "bar", data: { labels: ["Enrolled", "Certified"], datasets: [{ data: [496426, 98576], backgroundColor: [P.grey, P.red], borderRadius: 3 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.y.toLocaleString("en-IN")}` } } }, scales: { y: { grid: { color: Tower.css("--line-soft") } }, x: { grid: { display: false } } } } });
+  Tower.chart("itiChart", { type: "bar", data: { labels: ITI.labels, datasets: [{ data: ITI.values, backgroundColor: [P.silver, P.beam], borderRadius: 3 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.y.toLocaleString("en-IN")} ITIs` } } }, scales: { y: { min: 0, grid: { color: Tower.css("--line-soft") } }, x: { grid: { display: false } } } } });
+  Tower.chart("stateRate", {
+    type: "bar",
+    data: { labels: ST.map(s => s.code), datasets: [{ data: ST.map(s => s.rate), backgroundColor: ST.map(s => s.pilot ? P.beam : P.grey), borderRadius: 3 }] },
+    options: { indexAxis: "y", plugins: { legend: { display: false }, tooltip: { callbacks: { title: i => ST[i[0].dataIndex].name, label: c => ` ${c.parsed.x}% certified of ${ST[c.dataIndex].enrolled.toLocaleString("en-IN")} enrolled` } } },
+      scales: { x: { min: 0, max: 100, grid: { color: Tower.css("--line-soft") } }, y: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
+  });
+  Tower.chart("workChart", {
+    type: "doughnut",
+    data: { labels: ["Agriculture", "Non-farm units <20 workers", "Firms with 20+ workers"], datasets: [{ data: [43, 42, 15], backgroundColor: [P.beam, P.grey, "#2E2E38"], borderColor: Tower.css("--panel"), borderWidth: 2 }] },
+    options: { cutout: "58%", plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => ` ${c.label}: ${c.parsed}%` } } } }
+  });
+});
+</script>
+{% endblock %}

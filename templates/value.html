@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+<section class="panel beam-top">
+  <div class="panel-h">
+    <div><h2>Long-Term Value lens</h2><div class="sub">EY measures value on four dimensions, not just financial return. Each intervention is scored 1 to 5 on each (team assessment), then weighted by its share of the pilot budget.</div></div>
+    <div class="actions"><span class="chip"><i style="background:var(--beam)"></i>Balance index {{ ltv.balance }}%</span></div>
+  </div>
+  <div class="g g-4">
+    {% for d in ltv.dims %}
+    <div class="tile" style="border-top:3px solid {{ d.color }}">
+      <div class="l">{{ d.name }}</div>
+      <div class="v">{{ ltv.realised[d.key] }}<small>/ 5</small></div>
+      <p class="small mt-8 muted">{{ d.desc }}</p>
+      <ul class="small mt-8" style="margin:8px 0 0;padding-left:16px;display:grid;gap:4px">{% for o in ltv.outcome[d.key] %}<li>{{ o }}</li>{% endfor %}</ul>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="g g-2">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Value shape of the active scenario</h2><div class="sub">Deployment-weighted score per dimension</div></div></div>
+    <div class="chart h-300"><canvas id="ltvRadar"></canvas></div>
+    {{ cite([], 'Scores 1 to 5 are team judgements; weights = share of the ₹290 Cr pilot (workbook Budget_Model)') }}
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>Value contributed by each lever</h2><div class="sub">Sum of four dimension scores</div></div></div>
+    <div class="chart h-300"><canvas id="ltvBar"></canvas></div>
+    {{ cite([], 'Team judgements (assumption)') }}
+  </div>
+</section>
+
+<section class="panel flush">
+  <div class="panel-h" style="padding:20px 20px 0"><div><h2>Lever by dimension scorecard</h2><div class="sub">How each intervention creates value and the metric that proves it</div></div></div>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Lever</th>{% for d in ltv.dims %}<th style="text-align:center">{{ d.name }}</th>{% endfor %}<th class="num">Total</th><th class="num">Pilot share</th><th>Proof metric</th></tr></thead>
+      <tbody>
+      {% for l in ltv.levers %}
+      <tr><td><span class="chip"><i style="background:{{ l.color }}"></i>{{ l.id }}</span> {{ l.short }}</td>
+        {% for d in ltv.dims %}{% set v = l.scores[d.key] %}<td style="text-align:center"><span style="display:inline-grid;place-items:center;width:30px;height:26px;border-radius:4px;font-weight:800;background:rgba(255,230,0,{{ (v/5*0.9)|round(2) }});color:{{ '#1A1A24' if v >= 3 else 'var(--text)' }}">{{ v }}</span></td>{% endfor %}
+        <td class="num"><b>{{ l.total }}</b></td><td class="num">{{ l.share }}%</td><td class="small">{{ l.metric }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const LTV = {{ ltv|tojson }};
+const P = Tower.palette;
+document.addEventListener("DOMContentLoaded", () => {
+  Tower.chart("ltvRadar", {
+    type: "radar",
+    data: { labels: LTV.dims.map(d => d.name), datasets: [
+      { label: "Active scenario", data: LTV.dims.map(d => LTV.realised[d.key]), borderColor: P.beam, backgroundColor: "rgba(255,230,0,.2)", pointBackgroundColor: P.beam },
+      { label: "Full potential", data: LTV.dims.map(() => 5), borderColor: P.grey, borderDash: [4, 4], backgroundColor: "transparent", pointRadius: 0 }
+    ]},
+    options: { plugins: { legend: { position: "bottom" } }, scales: { r: { min: 0, max: 5, ticks: { display: false, stepSize: 1 }, grid: { color: Tower.css("--line") }, angleLines: { color: Tower.css("--line") }, pointLabels: { color: Tower.css("--text-2") } } } }
+  });
+  Tower.chart("ltvBar", {
+    type: "bar",
+    data: { labels: LTV.levers.map(l => l.id + " " + l.short), datasets: LTV.dims.map(d => ({ label: d.name, data: LTV.levers.map(l => l.scores[d.key]), backgroundColor: d.color, borderRadius: 2 })) },
+    options: { indexAxis: "y", plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true, max: 20, grid: { color: Tower.css("--line-soft") } }, y: { stacked: true, grid: { display: false } } } }
+  });
+});
+</script>
+{% endblock %}

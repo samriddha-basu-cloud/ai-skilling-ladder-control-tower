@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="g g-4-8">
+  <form class="panel" id="navForm" style="align-self:start" novalidate>
+    <div class="panel-h"><div><h2>Learner profile</h2><div class="sub">How a citizen, counsellor or employer would use the L0 to L5 ladder on SIDH (illustrative placement rules)</div></div></div>
+    <div class="g g-2" style="gap:12px">
+      <div class="form-row span-2"><label for="age">Age</label><input class="input" type="number" id="age" min="14" max="75" value="44"></div>
+            <div class="form-row span-2"><label for="education">Education</label>
+        <select class="input" id="education">{% for k, v in education.items() %}<option value="{{ k }}" {% if k == 'ug_nontech' %}selected{% endif %}>{{ v[0] }}</option>{% endfor %}</select></div>
+      <div class="form-row span-2"><label for="occupation">Occupation</label>
+        <select class="input" id="occupation">{% for k, v in occupation.items() %}<option value="{{ k }}" {% if k == 'non_it_pro' %}selected{% endif %}>{{ v.label }}</option>{% endfor %}</select></div>
+      <div class="form-row"><label for="state">State</label>
+        <select class="input" id="state">{% for s in states %}<option value="{{ s.code }}" {% if s.code == 'MH' %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+      <div class="form-row"><label for="language">Learning language</label>
+        <select class="input" id="language">{% for l in languages %}<option {% if l == 'Marathi' %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+    </div>
+    <h3 class="mt-16" style="font-size:13px">Self-assessment</h3>
+    {% for q in questions %}
+    <div class="q">
+      <p id="{{ q.id }}-l">{{ q.text }}</p>
+      <div class="seg" role="radiogroup" aria-labelledby="{{ q.id }}-l" data-q="{{ q.id }}">
+        {% for o in q.options %}<button type="button" role="radio" data-v="{{ loop.index0 }}" class="{{ 'on' if (loop.index0 == 1 and q.id in ['q1','q2']) or (loop.index0 == 0 and q.id not in ['q1','q3']) else '' }}" aria-checked="false">{{ o }}</button>{% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    <button class="btn primary mt-16" type="submit" style="width:100%;justify-content:center">Build my ladder plan</button>
+  </form>
+
+  <div class="g" style="align-content:start" id="navOut" aria-live="polite">
+    <div class="empty"><b>No plan yet</b>Fill in the profile and build a plan to see where this learner stands and how they climb.</div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function answers() {
+  const a = {};
+  document.querySelectorAll(".seg[data-q]").forEach(g => { const on = g.querySelector("button.on"); a[g.dataset.q] = on ? +on.dataset.v : 0; });
+  return a;
+}
+function render(r) {
+  navOut.innerHTML = `
+    <section class="hero" style="grid-template-columns:1fr">
+      <div style="position:relative;z-index:1">
+        <div class="small" style="color:#A0A0AE">${r.profile.occupation}, ${r.profile.age} | ${r.profile.education} | ${r.profile.state} | learning in ${r.profile.language}</div>
+        <div class="row mt-12" style="gap:16px;flex-wrap:wrap">
+          <div><div class="small" style="color:#A0A0AE">Stands today</div><div class="chip" style="background:${r.current.color};color:${r.current.ink};border-color:${r.current.color};font-size:15px;padding:6px 12px">${r.current.code} ${r.current.name}</div></div>
+          <div style="font-size:22px;color:#FFE600">→</div>
+          <div><div class="small" style="color:#A0A0AE">Target level</div><div class="chip" style="background:${r.target.color};color:${r.target.ink};border-color:${r.target.color};font-size:15px;padding:6px 12px">${r.target.code} ${r.target.name}</div></div>
+        </div>
+      </div>
+    </section>
+    <div class="g g-3">
+      <div class="tile"><div class="l">Self-assessment</div><div class="v">${r.score}<small>/10</small></div></div>
+      <div class="tile"><div class="l">Time to target</div><div class="v">${r.weeks}<small> weeks</small></div><div class="d">indicative</div></div>
+      <div class="tile"><div class="l">AI Skill Credit</div><div class="v" style="font-size:20px">${r.credit ? r.credit[1] : "Not eligible"}</div><div class="d">${r.credit ? r.credit[0] + " (proposed)" : ""}</div></div>
+    </div>
+    <div class="panel"><div class="panel-h"><div><h2>Pathway</h2><div class="sub">Each step ends in evidence written to the AI Skill Passport</div></div></div>
+      <div class="g" style="gap:8px">${r.steps.map(s => `<div style="display:grid;grid-template-columns:56px 1fr;border-radius:8px;overflow:hidden;background:var(--panel-2)"><div style="display:grid;place-items:center;font-weight:800;background:${s.color};color:${s.ink}">${s.code}</div>
+        <div style="padding:10px 12px"><b>${s.name}</b> <span class="muted small">≈${s.weeks} weeks</span><p class="small mt-8">${s.how}</p><p class="small"><b>Proof:</b> ${s.proof}</p><div class="pill-row mt-8">${s.channels.map(c => `<span class="chip">${c}</span>`).join("")}</div></div></div>`).join("") || '<p class="muted small">Already at the top level: focus on refresh and mentoring.</p>'}</div></div>
+    <div class="g g-2">
+      <div class="panel"><div class="panel-h"><div><h2>Support and top-ups</h2></div></div><div class="alerts">${r.topups.map(t => `<div class="alert green"><span class="stripe"></span><div><p>${t}</p></div></div>`).join("") || '<p class="muted small">Standard ladder access applies.</p>'}</div>
+        ${r.state_ctx ? `<p class="small muted mt-12">${r.state_ctx.name}: FSP certification rate ${r.state_ctx.rate}%${r.state_ctx.pilot ? `; pilot state (${r.state_ctx.pilot})` : ""}.</p>` : ""}</div>
+      <div class="panel"><div class="panel-h"><div><h2>Passport record</h2></div></div><ul class="small" style="margin:0;padding-left:18px;display:grid;gap:4px">${r.passport.map(p => `<li>${p}</li>`).join("")}</ul><p class="small muted mt-12">${r.note}</p></div>
+    </div>`;
+}
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".seg[data-q] button").forEach(b => b.addEventListener("click", () => { b.parentNode.querySelectorAll("button").forEach(x => { x.classList.remove("on"); x.setAttribute("aria-checked", "false"); }); b.classList.add("on"); b.setAttribute("aria-checked", "true"); }));
+  navForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    const body = { age: +age.value, education: education.value, occupation: occupation.value, state: state.value, language: language.value, answers: answers() };
+    if (!body.age || body.age < 14 || body.age > 75) { Tower.toast("Enter an age between 14 and 75"); age.focus(); return; }
+    try { render(await Tower.api("/api/pathway", body)); } catch (err) { Tower.toast(err.message); }
+  });
+  navForm.requestSubmit ? navForm.requestSubmit() : navForm.dispatchEvent(new Event("submit"));
+});
+</script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+<section class="panel beam-top">
+  <div class="panel-h"><div><h2>Prove, measure, scale: a stage-gated 60-month roadmap</h2><div class="sub">Months from programme start. Diamonds are evidence gates. {{ tag('ass') }}</div></div></div>
+  <div class="tbl-wrap"><div class="gantt">
+    <div class="hdr">Workstream</div>
+    <div class="scale-row">{% for m in [0, 6, 12, 18, 24, 36, 48, 60] %}<span style="left:{{ m / 60 * 100 }}%">M{{ m }}</span>{% endfor %}</div>
+    <div class="lbl"><i style="background:#FFE600"></i>Phase</div>
+    <div class="phase-row">{% for p in phases %}<div class="phase" style="text-overflow:ellipsis;left:{{ p.start / 60 * 100 }}%;width:{{ (p.end - p.start) / 60 * 100 - 0.4 }}%;background:{{ ['#C4C4CD', '#FFE600', '#9C9CA8', '#2E2E38'][loop.index0] }};color:{{ '#fff' if loop.index0 == 3 else '#1A1A24' }}" title="{{ p.id }} {{ p.name }}: {{ p.goal }}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">{{ p.id }} {{ p.name }}</span></div>{% endfor %}</div>
+    {% for w in workstreams %}{% set wc = ['#188CE5', '#27ACAA', '#FF6D00', '#B14891'][loop.index0] %}
+    <div class="lbl"><i style="background:{{ wc }}"></i>{{ w.name }}</div>
+    <div class="track wtrack">{% for m in [6, 18, 36] %}<div class="grid-v" style="left:{{ m / 60 * 100 }}%"></div>{% endfor %}
+      {% for bar in w.bars %}{% set a, b, t = bar[0], bar[1], bar[2] %}{% set full = bar[3] if bar|length > 3 else bar[2] %}<div class="bar" style="left:{{ a / 60 * 100 }}%;width:{{ (b - a) / 60 * 100 - 0.4 }}%;background:{{ wc }}" title="{{ full }}"></div><span class="wlbl" style="left:{{ a / 60 * 100 }}%;width:{{ (b - a) / 60 * 100 - 0.4 }}%" title="{{ full }}">{{ t }}</span>{% endfor %}
+    </div>
+    {% endfor %}
+    <div class="lbl"><i style="background:var(--text)"></i>Evidence gates</div>
+    <div class="track">{% for g in gates %}<div class="ms" style="left:{{ g.month / 60 * 100 }}%;top:{{ 10 + (loop.index0 % 2) * 14 }}px" data-t="{{ g.id }} {{ g.name }} (M{{ g.month }})"></div>{% endfor %}
+      <div class="ms" style="left:60%;background:var(--beam)" data-t="Re-gate before institutionalisation (M36)"></div></div>
+  </div></div>
+  {{ cite([], 'Phases, workstreams and gates from workbook Framework (Roadmap) and KPIs_Targets (Stage gate)') }}
+  <div class="g g-4 mt-16">{% for p in phases %}<div style="background:var(--panel-2);border-radius:8px;padding:12px"><b>{{ p.id }} {{ p.name }}</b> <span class="muted small">M{{ p.start }} to M{{ p.end }}</span><p class="small mt-8" style="color:var(--text-2)">{{ p.goal }}</p></div>{% endfor %}</div>
+</section>
+
+<section class="g g-2">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Six gates, all must pass</h2><div class="sub">Status in the active scenario ({{ active_scenario.name }})</div></div></div>
+    <div class="g" style="gap:8px">{% for g in sim.gates %}<div class="gate {{ 'pass' if g.pass else 'fail' }}"><div class="gd">{{ g.id }}</div><div><h4>{{ g.name }} <span class="muted small">M{{ g.month }}</span></h4><p>{{ g.test }}</p><p class="small">{{ g.detail }}</p></div></div>{% endfor %}</div>
+    <div class="alert amber mt-12"><span class="stripe"></span><div><h4>If a gate fails</h4><p>Redesign or stop. Loss is capped at ₹290 Cr and India still gains its first outcome baseline for AI skilling.</p></div></div>
+  </div>
+  <div class="panel flush">
+    <div class="panel-h" style="padding:20px 20px 0"><div><h2>Pilot resources: ₹{{ sim.budget.total_cr }} Cr</h2><div class="sub">Bottom-up, active scenario {{ tag('ass') }}</div></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Line</th><th>Intervention</th><th class="num">₹ Cr</th><th class="num">Share</th><th>Basis</th></tr></thead>
+      <tbody>{% for l in sim.budget.lines %}<tr><td><b>{{ l.line }}</b></td><td>{% if l.int %}<a class="chip" href="/interventions#{{ l.int }}">{{ l.int }}</a>{% endif %}</td><td class="num">{{ l.amount }}</td><td class="num">{{ l.share }}%</td><td class="small">{{ l.basis }}</td></tr>{% endfor %}
+      <tr><td><b>Total</b></td><td></td><td class="num"><b>{{ sim.budget.total_cr }}</b></td><td class="num">100%</td><td class="small">Cap ₹{{ sim.budget.cap_cr }} Cr</td></tr></tbody>
+    </table></div>
+    <p class="small muted" style="padding:0 20px 16px">Five-year envelope ₹6,500 Cr: Centre ₹4,000 Cr, industry ₹1,250 Cr, states ₹750 Cr, CSR ₹500 Cr. Central share ₹800 Cr a year = {{ env.central_pct_msde }}% of MSDE FY27.</p>
+    <div style="padding:0 20px 16px">{{ cite(['S11'], 'Workbook Budget_Model sections A to C (internal assumptions)', 'D22') }}</div>
+  </div>
+</section>
+
+<section class="panel flush">
+  <div class="panel-h" style="padding:20px 20px 0"><div><h2>Risk register and built-in response</h2><div class="sub">From the team's evidence workbook; linked to the gate that catches it</div></div></div>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th class="sortable">Risk</th><th class="sortable">Likelihood</th><th>Mitigation</th><th class="sortable">Owner</th><th class="sortable">Gate</th></tr></thead>
+    <tbody>{% for r, lk, m, o, g in risks %}<tr><td><b>{{ r }}</b></td><td><span class="chip"><i style="background:{{ '#FF4136' if lk == 'High' else ('#FF6D00' if lk == 'Medium' else '#747480') }}"></i>{{ lk }}</span></td><td>{{ m }}</td><td>{{ o }}</td><td>{{ g }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <div style="padding:0 20px 16px">{{ cite([], 'Workbook Risk_Register (qualitative team assessment, not an externally reported score)') }}</div>
+</section>
+
+<section class="panel flush">
+  <div class="panel-h" style="padding:20px 20px 0"><div><h2>Who does what (RACI)</h2><div class="sub">R responsible, A accountable, C consulted, I informed {{ tag('ass') }}</div></div></div>
+  <div class="tbl-wrap"><table class="tbl raci">
+    <thead><tr><th>Activity</th>{% for c in raci_cols %}<th style="text-align:center">{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for act, row in raci %}<tr><td>{{ act }}</td>{% for v in row %}<td class="c"><span class="{{ v }}">{{ v }}</span></td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+<div class="seg no-print" id="tabs" role="tablist" style="align-self:start">
+  <button class="on" data-t="tree" role="tab">MECE issue tree</button>
+  <button data-t="pestle" role="tab">PESTLE scan</button>
+  <button data-t="stake" role="tab">Stakeholder map</button>
+</div>
+
+<section id="tab-tree" class="g">
+  <div class="panel beam-top">
+    <div class="panel-h">
+      <div><h2>Hypothesis-driven issue tree</h2><div class="sub">One governing question, five mutually exclusive branches, each tested against verified evidence (source IDs in brackets). Select a node for detail.</div></div>
+      <div class="actions"><div class="seg" id="stFilter"><button class="on" data-s="all">All</button><button data-s="supported">Supported</button><button data-s="partial">Partial</button><button data-s="test">To test</button></div></div>
+    </div>
+    <div class="tree-root">{{ tree.question }}</div>
+    <div class="tree">
+      {% for b in tree.branches %}
+      <div class="tree-col">
+        <div class="tree-branch" style="border-top-color:{{ b.color }}"><span class="small muted">{{ b.id }}</span><b>{{ b.name }}</b></div>
+        {% for n in b.nodes %}
+        <button class="tree-node" data-status="{{ n.status }}" data-b="{{ loop.index0 }}" data-bi="{{ b.id }}" data-n="{{ loop.index0 }}">
+          <span class="q">{{ n.q }}</span>
+          <span class="h">{{ n.h }}</span>
+          <span class="st {{ n.status }}">{{ {'supported':'Supported','partial':'Partially supported','test':'To test in pilot'}[n.status] }}</span>
+        </button>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="g g-3">
+    <div class="tile"><div class="l">Hypotheses supported by evidence</div><div class="v" id="nSup"></div></div>
+    <div class="tile"><div class="l">Partially supported</div><div class="v" id="nPar"></div></div>
+    <div class="tile"><div class="l">To be tested in Phase 1 pilots</div><div class="v" id="nTest"></div></div>
+  </div>
+</section>
+
+<section id="tab-pestle" class="g hide">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Tailwinds vs headwinds</h2><div class="sub">Weighted 1 to 5 by expected effect on the reform</div></div></div>
+    <div class="chart h-260"><canvas id="pestleChart"></canvas></div>
+    {{ cite(['S06','S23','S25','S01','S05','S22'], 'Weights are team judgements (assumption); each factor carries its source ID') }}
+  </div>
+  <div class="g g-3">
+    {% for d in pestle %}
+    <div class="panel">
+      <div class="panel-h"><div><h2>{{ d.dim }}</h2></div></div>
+      <div class="g" style="gap:8px">
+        {% for it in d['items'] %}
+        <div class="alert {{ 'green' if it.dir == 'tail' else 'red' }}" style="padding-top:10px;padding-bottom:10px"><span class="stripe"></span>
+          <div><p style="color:var(--text);font-size:13px">{{ it.f }}</p><p class="small">{{ 'Tailwind' if it.dir == 'tail' else 'Headwind' }}, weight {{ it.w }}</p></div></div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section id="tab-stake" class="g g-8-4 hide">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Power vs interest</h2><div class="sub">Engagement strategy follows the quadrant; colour shows current stance</div></div></div>
+    <div class="matrix-wrap"><canvas id="stakeChart"></canvas></div>
+    {{ cite([], 'Power and interest scores are team judgements (assumption)') }}
+  </div>
+  <div class="panel quad-list" id="stakeList"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TREE = {{ tree|tojson }};
+const PESTLE = {{ pestle|tojson }};
+const SMAP = {{ smap|tojson }};
+const P = Tower.palette;
+const STATUS = { supported: "Supported by data", partial: "Partially supported, needs more data", test: "To be tested in Phase 1 pilots" };
+
+function nodeDetail(b, n) {
+  const br = TREE.branches[b], nd = br.nodes[n];
+  const link = /^FM\d/.test(nd.link) ? `<a class="btn" href="/matrix">${nd.link} in diagnosis</a>` : /^I\d/.test(nd.link) ? `<a class="btn" href="/interventions#${nd.link}">${nd.link} intervention</a>` : `<a class="btn" href="/kpis">${nd.link} gate</a>`;
+  Tower.drawer.open(`<span class="chip"><i style="background:${br.color}"></i>${br.id} ${br.name}</span>
+    <h2 style="font-size:20px;margin:12px 0 8px">${nd.q}</h2>
+    <h3 style="font-size:13px" class="mt-16">Hypothesis</h3><p class="mt-8" style="color:var(--text-2)">${nd.h}</p>
+    <h3 style="font-size:13px" class="mt-16">Evidence</h3><p class="mt-8" style="color:var(--text-2)">${nd.ev}</p>
+    <h3 style="font-size:13px" class="mt-16">Status</h3><p class="mt-8">${STATUS[nd.status]}</p>
+    <div class="row mt-16">${link}</div>`);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("#tabs button").forEach(x => x.classList.remove("on")); b.classList.add("on");
+    ["tree", "pestle", "stake"].forEach(t => document.getElementById("tab-" + t).classList.toggle("hide", t !== b.dataset.t));
+    if (b.dataset.t === "pestle") drawPestle();
+    if (b.dataset.t === "stake") drawStake();
+  }));
+  document.querySelectorAll(".tree-node").forEach(el => el.addEventListener("click", () => nodeDetail(+el.dataset.b, +el.dataset.n)));
+  document.querySelectorAll("#stFilter button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("#stFilter button").forEach(x => x.classList.remove("on")); b.classList.add("on");
+    document.querySelectorAll(".tree-node").forEach(n => n.style.opacity = b.dataset.s === "all" || n.dataset.status === b.dataset.s ? 1 : .2);
+  }));
+  const all = TREE.branches.flatMap(b => b.nodes);
+  nSup.textContent = all.filter(n => n.status === "supported").length + " of " + all.length;
+  nPar.textContent = all.filter(n => n.status === "partial").length;
+  nTest.textContent = all.filter(n => n.status === "test").length;
+});
+
+function drawPestle() {
+  Tower.chart("pestleChart", {
+    type: "bar",
+    data: { labels: PESTLE.map(d => d.dim), datasets: [
+      { label: "Tailwinds", data: PESTLE.map(d => d.items.filter(i => i.dir === "tail").reduce((a, i) => a + i.w, 0)), backgroundColor: P.green, borderRadius: 3 },
+      { label: "Headwinds", data: PESTLE.map(d => -d.items.filter(i => i.dir === "head").reduce((a, i) => a + i.w, 0)), backgroundColor: P.red, borderRadius: 3 }
+    ]},
+    options: { indexAxis: "y", plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${Math.abs(c.parsed.x)}` } } },
+      scales: { x: { stacked: true, grid: { color: Tower.css("--line-soft") }, ticks: { callback: v => Math.abs(v) } }, y: { stacked: true, grid: { display: false } } } }
+  });
+}
+
+function strategy(s) { return s.power >= 6 && s.interest >= 6 ? "Manage closely" : s.power >= 6 ? "Keep satisfied" : s.interest >= 6 ? "Keep informed" : "Monitor"; }
+function drawStake() {
+  const SC = { Champion: P.beam, Supportive: P.green, Neutral: P.silver, Mixed: P.orange, Sceptical: P.red };
+  const quad = { id: "q", beforeDraw(ch) { const { ctx, chartArea: a, scales: { x, y } } = ch; const cx = x.getPixelForValue(6), cy = y.getPixelForValue(6);
+      ctx.save(); ctx.strokeStyle = Tower.css("--beam"); ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(cx, a.top); ctx.lineTo(cx, a.bottom); ctx.moveTo(a.left, cy); ctx.lineTo(a.right, cy); ctx.stroke();
+      ctx.fillStyle = Tower.css("--text-3"); ctx.font = "700 12px " + Chart.defaults.font.family;
+      ctx.textAlign = "right"; ctx.fillText("Manage closely", a.right - 8, a.top + 16); ctx.fillText("Keep informed", a.right - 8, a.bottom - 8);
+      ctx.textAlign = "left"; ctx.fillText("Keep satisfied", a.left + 8, a.top + 16); ctx.fillText("Monitor", a.left + 8, a.bottom - 8); ctx.restore(); },
+    afterDatasetsDraw(ch) { const { ctx } = ch; ctx.save(); ctx.font = "600 11px " + Chart.defaults.font.family; ctx.fillStyle = Tower.css("--text");
+      ch.data.datasets.forEach((ds, di) => ch.getDatasetMeta(di).data.forEach((pt, i) => ctx.fillText(ds.data[i].n, pt.x + 8, pt.y + 4))); ctx.restore(); } };
+  const stances = [...new Set(SMAP.map(s => s.stance))];
+  Tower.chart("stakeChart", {
+    type: "scatter",
+    data: { datasets: stances.map(st => ({ label: st, data: SMAP.filter(s => s.stance === st).map(s => ({ x: s.interest, y: s.power, n: s.name })), backgroundColor: SC[st], pointRadius: 7 })) },
+    options: { plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => ` ${c.raw.n}: interest ${c.raw.x}, power ${c.raw.y}` } } },
+      scales: { x: { min: 0, max: 10.5, title: { display: true, text: "Interest" }, grid: { color: Tower.css("--line-soft") } }, y: { min: 0, max: 10.5, title: { display: true, text: "Power" }, grid: { color: Tower.css("--line-soft") } } } },
+    plugins: [quad]
+  });
+  const groups = {};
+  SMAP.forEach(s => (groups[strategy(s)] = groups[strategy(s)] || []).push(s));
+  stakeList.innerHTML = ["Manage closely", "Keep satisfied", "Keep informed", "Monitor"].map(g => `<div style="margin-bottom:16px"><h3>${g}</h3><ul>${(groups[g] || []).map(s => `<li><span>${s.name}</span><span class="muted">${s.stance}</span></li>`).join("")}</ul></div>`).join("");
+}
+</script>
+{% endblock %}

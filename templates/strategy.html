@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+{% set c = sim.consistency %}
+<section class="g g-4">
+  <div class="tile"><div class="l">VACR, active scenario</div><div class="v">{{ sim.kpi.vacr }}<small>%</small></div><div class="d">{{ active_scenario.name }}</div></div>
+  <div class="tile"><div class="l">VACR ceiling at target floors {{ tag('der') }}</div><div class="v">{{ c.floor_ceiling }}<small>%</small></div><div class="d">70% completion × 60% competency</div></div>
+  <div class="tile"><div class="l">Cost per verified convert {{ tag('der') }}</div><div class="v">₹{{ '{:,}'.format(sim.econ.cost_per_convert or 0) }}</div><div class="d">≈{{ sim.econ.months_of_earnings }} months of urban salaried earnings</div></div>
+  <div class="tile"><div class="l">Central share vs MSDE FY27 {{ tag('der') }}</div><div class="v">{{ env.central_pct_msde }}<small>%</small></div><div class="d">₹800 Cr a year of ₹9,885.80 Cr {{ src(['S11']) }}</div></div>
+</section>
+
+<div class="seg no-print" id="labTabs" style="align-self:start;flex-wrap:wrap">
+  <button class="on" data-t="tree">VACR driver tree</button><button data-t="consistency">Target consistency</button><button data-t="sens">Sensitivity</button>
+  <button data-t="econ">Budget and envelope</button><button data-t="breakeven">Break-even test</button><button data-t="portfolio">Pilot portfolio</button>
+</div>
+
+<section id="tab-tree" class="panel beam-top">
+  <div class="panel-h"><div><h2>Value driver tree: what VACR is made of</h2><div class="sub">VACR = completion × competency × transition uptake × workplace validation. Move a what-if slider to see how far each driver moves the North Star. {{ tag('ass') }}</div></div>
+    <div class="actions"><button class="btn ghost" id="wiReset">Reset what-if</button></div></div>
+  <div class="dtree">
+    <div class="dcol"><div class="dnode root"><div class="small muted">VACR (verified ÷ entrants)</div><div class="dv"><span id="wiV">{{ sim.kpi.vacr }}</span><small>%</small></div><div class="small">Target ≥40%, <span id="wiN">{{ '{:,}'.format(sim.verified) }}</span> verified</div><div class="small mt-8">Cost per convert <b id="wiC">₹{{ '{:,}'.format(sim.econ.cost_per_convert or 0) }}</b></div></div></div>
+    <div class="dcol"><div class="dnode"><div class="small muted">Competent share of entrants</div><div class="dv"><span id="wiComp">{{ (sim.params.completion * sim.params.competency * 100)|round(1) }}</span><small>%</small></div><div class="small muted">completion × competency</div></div>
+      <div class="dop">×</div><div class="dnode"><div class="small muted">Workplace conversion of competent</div><div class="dv"><span id="wiWork">{{ (sim.params.uptake * sim.params.validation * 100)|round(1) }}</span><small>%</small></div><div class="small muted">uptake × validation</div></div></div>
+    <div class="dcol wide" style="grid-column:span 2">
+      {% for key, label, lever in [('completion','Completion','I2 milestone pay, I5 trainers'),('competency','Competency validation','I2 independent assessment, I5'),('uptake','Transition uptake','I3 apprenticeships, I7 exchange'),('validation','Workplace validation','I3 mentors, I7 employers')] %}
+      <div class="dnode driver-node" data-k="{{ key }}">
+        <div class="row"><b>{{ label }}</b><span class="spacer"></span><span class="small muted">{{ lever }}</span></div>
+        <div class="row mt-8"><span class="small">Plan <b>{{ (sim.params[key] * 100)|round(1) }}%</b></span><span class="spacer"></span><span class="small">What-if <b class="wiv">{{ (sim.params[key] * 100)|round(1) }}%</b></span></div>
+        <input type="range" min="0.2" max="0.98" step="0.01" value="{{ sim.params[key] }}" style="width:100%">
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="g g-2 mt-16">
+    <div><h3 style="font-size:13px">Funnel under the what-if (share of entrants)</h3><div class="chart h-260"><canvas id="wiChart"></canvas></div></div>
+    <div><h3 style="font-size:13px">VACR: plan vs what-if vs target</h3><div class="chart h-260"><canvas id="wiCmp"></canvas></div></div>
+  </div>
+  {{ cite([], 'Stage rates are scenario inputs (internal assumptions); VACR definition and 40% target from workbook KPIs_Targets') }}
+</section>
+
+<section id="tab-consistency" class="panel hide">
+  <div class="panel-h"><div><h2>Do the proposed targets add up?</h2><div class="sub">Arithmetic check on the deck's own targets {{ tag('der') }}</div></div></div>
+  <div class="g g-2">
+    <div>
+      <div class="alert red"><span class="stripe"></span><div><h4>At the target floors, VACR cannot reach 40%</h4><p>Completion ≥70% × competency ≥60% means at most {{ c.floor_ceiling }}% of entrants are assessed competent. To reach VACR 40%, {{ c.floor_required }}% of them would also need to transition and be workplace-validated. No real programme converts 95%.</p></div></div>
+      <div class="alert green mt-12"><span class="stripe"></span><div><h4>Operating plan that makes the targets consistent</h4><p>Run completion ≈76% and competency ≈73% (ceiling {{ (0.76 * 0.73 * 100)|round(1) }}%), with ≈86% transition uptake and ≈88% workplace validation: VACR ≈42%, a 2 pp buffer. Keep the published targets as floors for gates; manage to the operating plan.</p></div></div>
+      <p class="small muted mt-12">Active scenario: ceiling {{ c.ceiling }}%; downstream conversion needed for 40% = {{ c.required_downstream }}%.</p>
+    </div>
+    <div class="chart h-300"><canvas id="consChart"></canvas></div>
+  </div>
+  {{ cite(['S01'], 'Target floors from workbook KPIs_Targets (completion ≥70%, competency ≥60%, VACR ≥40%); today FSP ≈57% (D23), SOAR ≈20% (D25)') }}
+</section>
+
+<section id="tab-sens" class="g g-2 hide">
+  <div class="panel"><div class="panel-h"><div><h2>VACR sensitivity</h2><div class="sub">Change in VACR (pp) when each stage rate moves ±{{ sens.delta_pp|int }} pp</div></div></div><div class="chart h-300"><canvas id="sensV"></canvas></div></div>
+  <div class="panel"><div class="panel-h"><div><h2>Cost per convert sensitivity</h2><div class="sub">Change in ₹ per verified convert; base ₹{{ '{:,}'.format(sens.base_cost or 0) }}</div></div></div><div class="chart h-300"><canvas id="sensC"></canvas></div>{{ cite([], 'Computed from the active scenario; budget from workbook Budget_Model') }}</div>
+</section>
+
+<section id="tab-econ" class="g g-3 hide">
+  <div class="panel"><div class="panel-h"><div><h2>₹{{ sim.budget.total_cr }} Cr pilot, bottom-up</h2><div class="sub">Active scenario {{ tag('ass') }}</div></div></div><div class="chart h-340"><canvas id="pilotBar"></canvas></div>{{ cite([], 'Workbook Budget_Model section A (internal assumptions; deck rounds lines to 70/40/35/35/30/30/25/10/15)') }}</div>
+  <div class="panel"><div class="panel-h"><div><h2>₹6,500 Cr envelope financing</h2><div class="sub">Five years {{ tag('ass') }}</div></div></div><div class="chart h-260"><canvas id="finChart"></canvas></div>
+    {{ cite([], 'Workbook Budget_Model sections B to E') }}<p class="small mt-8">≈₹{{ '{:,}'.format(env.per_role_ready) }} per role-ready learner (₹2,100 Cr ÷ 30 lakh); ≈₹{{ '{:,}'.format(env.per_advanced) }} per advanced practitioner (₹2,000 Cr ÷ 1 lakh).</p></div>
+  <div class="panel" style="background:var(--ink);color:#fff">
+    <div class="panel-h"><div><h2 style="color:#FFE600">Affordable?</h2><div class="sub" style="color:#A0A0AE">{{ tag('der') }}</div></div></div>
+    {% for b, l in [(env.central_pct_msde|string + '%', 'central share ₹800 Cr/yr vs MSDE FY27 ₹9,885.80 Cr [S11]'), (env.csr_pct|string + '%', 'CSR ₹100 Cr/yr vs ₹29,986.92 Cr total CSR, FY23 [S31]'), ('₹' + '{:,}'.format(sim.econ.cost_per_convert or 0), 'per verified convert in the active scenario'), (sim.econ.months_of_earnings|string, 'months of average urban salaried earnings [S30]')] %}
+    <div style="padding:10px 0;border-bottom:1px solid #3A3A48"><div style="font-size:24px;font-weight:800">{{ b }}</div><div class="small" style="color:#C4C4CD">{{ l }}</div></div>
+    {% endfor %}
+    <p class="small mt-12" style="color:#FFE600">No manufactured ROI: benefits are measured against comparison districts and tracked to year 3.</p>
+    {{ cite(['S11','S31','S30'], '', 'D22') }}
+  </div>
+</section>
+
+<section id="tab-breakeven" class="g g-8-4 hide">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Break-even test, not an ROI claim</h2><div class="sub">What gain per verified convert would repay the pilot? Set a test uplift and horizon. {{ tag('ass') }}</div></div></div>
+    <div class="g g-3" style="gap:14px">
+      <div class="form-row"><label>Earnings uplift per convert <b id="beU"></b></label><input type="range" id="beUplift" min="0.02" max="0.3" step="0.01" value="{{ sim.params.uplift }}"></div>
+      <div class="form-row"><label>Years counted <b id="beY"></b></label><input type="range" id="beYears" min="1" max="3" step="1" value="{{ sim.params.years }}"></div>
+      <div class="form-row"><label>Monthly earnings base <b id="beE"></b></label><input type="range" id="beEarn" min="10000" max="60000" step="500" value="{{ sim.params.earnings }}"></div>
+    </div>
+    <div class="chart h-260 mt-16"><canvas id="beChart"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>Reading it</h2></div></div>
+    <div id="beOut"></div>
+    <p class="small mt-12" style="color:var(--text-2)">Context, not proof: one field study found ≈14% average productivity gains from a GenAI assistant and ≈34% for novices {{ src(['S17']) }}; training effects are near zero short-run and positive after 2-3 years {{ src(['S20']) }}. The pilot measures real gains against comparison districts.</p>
+    {{ cite(['S17','S18','S20','S30'], 'Break-even ≈₹48,300 per convert in the workbook plan (Budget_Model E)') }}
+  </div>
+</section>
+
+<section id="tab-portfolio" class="g g-8-4 hide">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Pilot portfolio on real FSP data</h2><div class="sub">Enrolment (log scale) vs certification rate; pilot states in yellow {{ tag('der') }} {{ src(['S01']) }}</div></div>
+      <div class="actions"><div class="seg" id="pfSel"><button class="on" data-v="v3">3.0 portfolio</button><button data-v="wb">Workbook 2.0 selection</button></div></div></div>
+    <div class="matrix-wrap"><canvas id="portChart"></canvas></div>
+    {{ cite(['S01'], 'Workbook 2.0 selection = top 5 by certifications (TN, AP, KA, MH, KL) + Bihar, Assam; 3.0 replaces MH and KL with Odisha and Uttar Pradesh', 'FSP_State_Data') }}
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>Why this mix</h2></div></div>
+    <p class="small" style="color:var(--text-2)">Choosing the top five by volume gives four southern states plus Maharashtra, so results would not transfer. The portfolio spans volume leaders (TN, AP), conversion leaders (KA, OD at 72%), a large northern state (UP) and two catch-up states including the North-East (Bihar, Assam). Each pilot is paired with a matched comparison district.</p>
+    <div class="g mt-12" style="gap:6px" id="pList"></div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SIM = {{ sim|tojson }};
+const SENS = {{ sens|tojson }};
+const ENV = {{ env|tojson }};
+const ST = {{ states|tojson }};
+const P = Tower.palette;
+const drawn = {};
+function tabs() {
+  document.querySelectorAll("#labTabs button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("#labTabs button").forEach(x => x.classList.remove("on")); b.classList.add("on");
+    ["tree", "consistency", "sens", "econ", "breakeven", "portfolio"].forEach(t => document.getElementById("tab-" + t).classList.toggle("hide", t !== b.dataset.t));
+    const f = { consistency: drawCons, sens: drawSens, econ: drawEcon, breakeven: drawBE, portfolio: drawPort }[b.dataset.t];
+    if (f) f();
+    history.replaceState(null, "", "#" + b.dataset.t);
+  }));
+}
+function whatIf() {
+  const v = {};
+  document.querySelectorAll(".driver-node").forEach(n => { const x = +n.querySelector("input").value; v[n.dataset.k] = x; n.querySelector(".wiv").textContent = (x * 100).toFixed(1) + "%"; });
+  const comp = v.completion * v.competency, work = v.uptake * v.validation, vacr = comp * work;
+  const n = SIM.params.entrants * vacr, cost = SIM.budget.total_cr * 1e7 / n;
+  Tower.tween(wiV, vacr * 100, x => x.toFixed(1)); Tower.tween(wiN, n);
+  Tower.tween(wiC, cost, x => "₹" + Math.round(x).toLocaleString("en-IN")); Tower.tween(wiComp, comp * 100, x => x.toFixed(1)); Tower.tween(wiWork, work * 100, x => x.toFixed(1));
+  wiV.style.color = vacr >= 0.4 ? "" : "#FF4136";
+  const st = [1, v.completion, comp, comp * v.uptake, vacr].map(x => +(x * 100).toFixed(1));
+  Tower.chart("wiChart", { type: "bar", data: { labels: ["Entered", "Completed", "Competent", "Transitioned", "Verified"],
+      datasets: [{ label: "What-if", data: st, backgroundColor: st.map((x, i) => i === 4 ? (vacr >= .4 ? P.green : P.red) : P.grey), borderRadius: 3 },
+                 { label: "Plan", data: PLAN_ST, backgroundColor: "rgba(255,230,0,.45)", borderRadius: 3 }] },
+    options: { plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 100, grid: { color: Tower.css("--line-soft") } }, x: { grid: { display: false } } } } });
+  Tower.chart("wiCmp", { type: "bar", data: { labels: ["Plan", "What-if", "Target"], datasets: [{ data: [SIM.kpi.vacr, +(vacr * 100).toFixed(1), 40], backgroundColor: [P.beam, vacr >= .4 ? P.green : P.red, P.silver], borderRadius: 3 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.y}%` } } }, scales: { y: { min: 0, max: 60, grid: { color: Tower.css("--line-soft") } }, x: { grid: { display: false } } } } });
+}
+const PLAN_ST = (() => { const p = SIM.params, c = p.completion * p.competency; return [1, p.completion, c, c * p.uptake, c * p.uptake * p.validation].map(x => +(x * 100).toFixed(1)); })();
+function drawCons() {
+  const pts = []; for (let c = 0.6; c <= 0.9001; c += 0.02) pts.push(+c.toFixed(2));
+  const need = comp => pts.map(k => +(40 / (comp * k)).toFixed(1));
+  Tower.chart("consChart", { type: "line",
+    data: { labels: pts.map(p => Math.round(p * 100) + "%"), datasets: [
+      { label: "Competency 60%", data: need(0.60), borderColor: P.red, tension: .3 },
+      { label: "Competency 72%", data: need(0.72), borderColor: P.beam, tension: .3 },
+      { label: "Competency 80%", data: need(0.80), borderColor: P.green, tension: .3 },
+      { label: "Realistic ceiling (90%)", data: pts.map(() => 90), borderColor: P.grey, borderDash: [5, 5], pointRadius: 0 } ] },
+    options: { plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y}% downstream needed` } } },
+      scales: { x: { title: { display: true, text: "Completion rate" }, grid: { display: false } }, y: { min: 50, max: 120, title: { display: true, text: "Downstream conversion needed for VACR 40% (%)" }, grid: { color: Tower.css("--line-soft") } } } } });
+}
+function drawSens() {
+  const r = SENS.rows;
+  Tower.chart("sensV", { type: "bar", data: { labels: r.filter(x => x.key !== "cost_mult").map(x => x.label), datasets: [
+      { label: "-5 pp", data: r.filter(x => x.key !== "cost_mult").map(x => x.vacr_lo), backgroundColor: P.red }, { label: "+5 pp", data: r.filter(x => x.key !== "cost_mult").map(x => x.vacr_hi), backgroundColor: P.green }] },
+    options: { indexAxis: "y", plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true, grid: { color: Tower.css("--line-soft") }, title: { display: true, text: "Change in VACR (pp)" } }, y: { stacked: true, grid: { display: false } } } } });
+  Tower.chart("sensC", { type: "bar", data: { labels: r.map(x => x.label), datasets: [
+      { label: "Down", data: r.map(x => x.cost_lo), backgroundColor: P.grey }, { label: "Up", data: r.map(x => x.cost_hi), backgroundColor: P.orange }] },
+    options: { indexAxis: "y", plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => ` ₹${Math.round(c.parsed.x).toLocaleString("en-IN")}` } } }, scales: { x: { stacked: true, grid: { color: Tower.css("--line-soft") }, title: { display: true, text: "Change in ₹ per verified convert" } }, y: { stacked: true, grid: { display: false } } } } });
+}
+function drawEcon() {
+  const L = [...SIM.budget.lines].sort((a, b) => b.amount - a.amount);
+  Tower.chart("pilotBar", { type: "bar", data: { labels: L.map(l => l.line), datasets: [{ data: L.map(l => l.amount), backgroundColor: L.map(l => l.int ? P.beam : P.grey), borderRadius: 3 }] },
+    options: { indexAxis: "y", plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ₹${c.parsed.x} Cr: ${L[c.dataIndex].basis}` } } }, scales: { x: { grid: { color: Tower.css("--line-soft") } }, y: { grid: { display: false } } } } });
+  Tower.chart("finChart", { type: "doughnut", data: { labels: ENV.financing.map(f => f[0]), datasets: [{ data: ENV.financing.map(f => f[1]), backgroundColor: ["#2E2E38", P.beam, P.grey, P.silver], borderColor: Tower.css("--panel"), borderWidth: 2 }] },
+    options: { cutout: "58%", plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => ` ${c.label}: ₹${c.parsed.toLocaleString("en-IN")} Cr` } } } } });
+}
+function drawBE() {
+  const u = +beUplift.value, y = +beYears.value, e = +beEarn.value;
+  beU.textContent = Math.round(u * 100) + "%"; beY.textContent = y; beE.textContent = "₹" + e.toLocaleString("en-IN");
+  const be = SIM.budget.total_cr * 1e7 / SIM.verified;
+  const years = [1, 2, 3], ben = years.map(k => Math.round(u * e * 12 * k));
+  Tower.chart("beChart", { type: "bar", data: { labels: years.map(k => k + " yr"), datasets: [
+      { label: "Test gain per convert", data: ben, backgroundColor: years.map((k, i) => ben[i] >= be ? P.green : P.grey), borderRadius: 3 },
+      { label: "Break-even", type: "line", data: years.map(() => Math.round(be)), borderColor: P.red, borderDash: [6, 5], pointRadius: 0 } ] },
+    options: { plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => ` ₹${c.parsed.y.toLocaleString("en-IN")}` } } }, scales: { y: { grid: { color: Tower.css("--line-soft") } }, x: { grid: { display: false } } } } });
+  const g = u * e * 12 * y, ok = g >= be;
+  beOut.innerHTML = `<div class="alert ${ok ? "green" : "red"}"><span class="stripe"></span><div><h4>${ok ? "Pilot would break even" : "Below break-even"}</h4><p>Break-even ₹${Math.round(be).toLocaleString("en-IN")} per convert vs test gain ₹${Math.round(g).toLocaleString("en-IN")} (${Math.round(u * 100)}% of ₹${e.toLocaleString("en-IN")}/month for ${y} yr). Minimum uplift needed over ${y} yr: ${(be / (e * 12 * y) * 100).toFixed(1)}%.</p></div></div>`;
+}
+let PF = "v3";
+function drawPort() {
+  const isP = s => PF === "v3" ? !!s.pilot : !!s.pilot_wb;
+  const all = ST.filter(s => s.enrolled > 0);
+  const lab = { id: "lab", afterDatasetsDraw(ch) { const { ctx } = ch; ctx.save(); ctx.font = "700 11px " + Chart.defaults.font.family; ctx.fillStyle = Tower.css("--text");
+    ch.getDatasetMeta(0).data.forEach((pt, i) => { if (isP(all[i])) ctx.fillText(all[i].code, pt.x + 9, pt.y + 4); }); ctx.restore(); } };
+  Tower.chart("portChart", { type: "scatter", data: { datasets: [
+      { label: PF === "v3" ? "3.0 pilot states" : "Workbook 2.0 pilot states", data: all.map(s => ({ x: s.enrolled, y: s.rate })), backgroundColor: all.map(s => isP(s) ? P.beam : P.grey + "88"), borderColor: all.map(s => isP(s) ? "#2E2E38" : "transparent"), pointRadius: all.map(s => isP(s) ? 9 : 5) },
+      { label: "National 58.3%", data: [{ x: 30, y: 58.3 }, { x: 700000, y: 58.3 }], showLine: true, borderColor: P.red, borderDash: [5, 5], pointRadius: 0 } ] },
+    options: { plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => { const s = all[c.dataIndex]; return c.datasetIndex === 0 ? ` ${s.name}: ${s.enrolled.toLocaleString("en-IN")} enrolled, ${s.rate}%` : " National rate (state table)"; } } } },
+      scales: { x: { type: "logarithmic", title: { display: true, text: "FSP enrolled / trained (log)" }, grid: { color: Tower.css("--line-soft") } }, y: { min: 15, max: 90, title: { display: true, text: "Certification rate (%)" }, grid: { color: Tower.css("--line-soft") } } } },
+    plugins: [lab] });
+  const pil = all.filter(isP);
+  pList.innerHTML = pil.map(s => `<div style="background:var(--panel-2);border-radius:6px;padding:8px 10px"><b>${s.name}</b> <span class="chip">${PF === "v3" ? s.pilot : s.pilot_wb}</span><div class="small muted">${s.rate}% certified of ${s.enrolled.toLocaleString("en-IN")}${PF === "v3" ? " | " + s.pilot_why : ""}</div></div>`).join("");
+  const avg = pil.reduce((a, s) => a + s.rate, 0) / pil.length, south = pil.filter(s => ["TN", "AP", "KA", "KL", "TG"].includes(s.code)).length;
+  pList.insertAdjacentHTML("beforeend", `<div class="small muted mt-8">Average certification rate ${avg.toFixed(1)}%; ${south} of ${pil.length} states in the South.</div>`);
+}
+document.addEventListener("DOMContentLoaded", () => {
+  tabs();
+  document.querySelectorAll(".driver-node input").forEach(i => i.addEventListener("input", whatIf));
+  wiReset.addEventListener("click", () => { document.querySelectorAll(".driver-node").forEach(n => { n.querySelector("input").value = SIM.params[n.dataset.k]; }); whatIf(); });
+  [beUplift, beYears, beEarn].forEach(el => el.addEventListener("input", drawBE));
+  whatIf();
+  document.querySelectorAll("#pfSel button").forEach(b => b.addEventListener("click", () => { document.querySelectorAll("#pfSel button").forEach(x => x.classList.remove("on")); b.classList.add("on"); PF = b.dataset.v; drawPort(); }));
+  const h = location.hash.slice(1);
+  if (["consistency", "sens", "econ", "breakeven", "portfolio"].includes(h)) document.querySelector(`#labTabs button[data-t="${h}"]`).click();
+});
+</script>
+{% endblock %}

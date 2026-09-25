@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+<section class="hero">
+  <div style="position:relative;z-index:1">
+    <div class="small" style="color:#A0A0AE">North Star KPI {{ tag('tgt') }}</div>
+    <h2 class="mt-8">Verified AI Workforce Conversion Rate (VACR)</h2>
+    <p>Learners achieving verified workplace competency ÷ learners entering × 100. Pilot target ≥40%. It measures what India does not report today: whether learning became work.</p>
+    <p class="small" style="color:#A0A0AE">Calibration: conservative next to outcome-funded peers (Skill Impact Bond 73% joined jobs; AIAP >90% placed, self-reported, selective intake). Definitions differ; Phase 0 recalibrates on real data. {{ src(['S28','S14']) }}</p>
+  </div>
+  <div style="position:relative;z-index:1;text-align:center">
+    <div class="big-dial" style="color:{{ '#FFE600' if sim.kpi.vacr >= 40 else '#FF4136' }}">{{ sim.kpi.vacr }}%</div>
+    <div style="color:#A0A0AE;margin-top:6px">Projected in "{{ active_scenario.name }}"</div>
+    <div class="mt-12"><span class="chip" style="color:#fff;border-color:#FFE600">{{ sim.gates_passed }} of 6 gates pass</span></div>
+  </div>
+</section>
+
+<section class="panel flush">
+  <div class="panel-h" style="padding:20px 20px 0"><div><h2>Pilot targets against today's baseline</h2><div class="sub">Projected values come from the active scenario; change them in the simulator</div></div><div class="actions"><a class="btn" href="/simulator">Open simulator</a></div></div>
+  <div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>KPI</th><th>Type</th><th>Formula</th><th>Baseline today</th><th class="num">Target</th><th class="num">Projected</th><th>Status</th><th>Gate</th><th>Kirkpatrick</th></tr></thead>
+    <tbody>{% for r in rows %}<tr>
+      <td><b>{{ r.name }}</b></td><td class="small">{{ r.type }}</td><td class="small">{{ r.formula }}</td><td class="small">{{ r.baseline }}</td>
+      <td class="num">{{ '≤' if r.cmp == '<=' else '≥' }}{% if r.unit == '₹' %}₹{{ '{:,}'.format(r.target) }}{% else %}{{ r.target }}%{% endif %}</td>
+      <td class="num">{% if r.projected is none %}<span class="muted">measured in pilot</span>{% elif r.unit == '₹' %}₹{{ '{:,}'.format(r.projected) }}{% else %}{{ r.projected }}%{% endif %}</td>
+      <td><span class="rag {{ r.status }}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:{{ {'green':'#2DB757','amber':'#FF6D00','red':'#FF4136','grey':'#C4C4CD'}[r.status] }}"></span></td>
+      <td>{{ r.gate or '' }}</td><td class="small">{{ r.kirk }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="small muted" style="padding:0 20px 8px">Inclusion targets are measured at conversion, a stricter test than today's entry data. Skill relevance (novel KPI): refresh or reassess when below 80%.</p>
+  <div style="padding:0 20px 16px">{{ cite(['S01','S02'], 'Targets, formulas and baselines as in the workbook', 'KPIs_Targets, D05, D06, D23, D25') }}</div>
+</section>
+
+<section class="panel">
+  <div class="panel-h"><div><h2>Projected vs target vs today</h2><div class="sub">Percent KPIs for the active scenario; today's figures are entry or completion proxies, not outcomes</div></div></div>
+  <div class="chart h-300"><canvas id="bullet"></canvas></div>
+  {{ cite(['S01','S02'], 'Today: FSP completion ≈57% (D23), SOAR ≈20% (D25), women 41% and Tier-2/3 86% at entry (D05, D06)') }}
+</section>
+
+<section class="g g-2">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Results chain</h2><div class="sub">From spend to impact</div></div></div>
+    <div class="g" style="gap:8px">
+      {% for s, d in [('Input','Funding, trainers, hubs, employers'),('Activity','Enrolment, assessment, projects'),('Output','Verified competencies, Passports'),('Outcome','Jobs, internal moves, wages, productivity'),('Impact','AI-capable workforce, inclusion, regional convergence')] %}
+      <div class="row" style="background:var(--panel-2);border-radius:6px;padding:8px 12px"><span class="chip" style="{{ 'background:#FFE600;color:#1A1A24;border-color:#FFE600' if loop.last else '' }}">{{ s }}</span><span class="small">{{ d }}</span></div>
+      {% endfor %}
+    </div>
+    <h3 class="mt-16" style="font-size:13px">SDG targets advanced</h3>
+    <div class="pill-row mt-8">{% for code, name, col in sdgs %}<span class="chip" style="background:{{ col }};color:#fff;border-color:{{ col }}" title="{{ name }}">SDG {{ code }}</span>{% endfor %}</div>
+    {{ cite([], 'Workbook KPIs_Targets lists SDG 4.4, 5, 8.2, 8.5, 9.5, 10.2; the 3.0 deck names specific targets') }}
+    <p class="small muted mt-8">{% for code, name, col in sdgs %}{{ code }} {{ name }}{% if not loop.last %}; {% endif %}{% endfor %}</p>
+  </div>
+  <div class="panel flush">
+    <div class="panel-h" style="padding:20px 20px 0"><div><h2>Kirkpatrick-Phillips evaluation</h2><div class="sub">How each level is measured</div></div></div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Level</th><th>Measure</th><th>Tool</th><th>KPI</th><th>Cadence</th></tr></thead>
+      <tbody>{% for k in kirk %}<tr><td><b>{{ k.level }} {{ k.name }}</b></td><td class="small">{{ k.measure }}</td><td class="small">{{ k.tool }}</td><td class="small">{{ k.kpi }}</td><td class="small">{{ k.cadence }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-h"><div><h2>Six evidence gates</h2><div class="sub">Scale only if all pass</div></div></div>
+  <div class="g g-3" style="gap:8px">{% for g in sim.gates %}<div class="gate {{ 'pass' if g.pass else 'fail' }}"><div class="gd">{{ g.id }}</div><div><h4>{{ g.name }} <span class="muted small">M{{ g.month }}</span></h4><p>{{ g.detail }}</p></div></div>{% endfor %}</div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const K = {{ sim.kpi|tojson }};
+document.addEventListener("DOMContentLoaded", () => {
+  const P = Tower.palette;
+  const rows = [["VACR", K.vacr, 40, null], ["Completion", K.completion, 70, 57], ["Competency", K.competency, 60, null], ["Transition", K.transition, 40, null], ["Employer sat.", K.employer_sat, 80, null], ["Women share", K.women, 45, 41], ["Tier-2/3 share", K.tier23, 70, 86]];
+  const opts = () => ({ plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: c => c.raw === null ? " not measured" : ` ${c.dataset.label}: ${c.raw}%` } } }, scales: { y: { min: 0, max: 100, grid: { color: Tower.css("--line-soft") } }, x: { grid: { display: false } } } });
+  const cfg = (a, b) => ({ type: "bar", data: { labels: rows.map(r => r[0]), datasets: [
+      { label: "Projected", data: a, backgroundColor: rows.map(r => r[1] >= r[2] ? P.green : P.red), borderRadius: 3 },
+      { label: "Today (proxy)", data: b, backgroundColor: P.silver, borderRadius: 3 },
+      { label: "Target", type: "line", data: rows.map(r => r[2]), showLine: false, pointStyle: "line", pointRadius: 34, pointBorderWidth: 3, pointBorderColor: Tower.css("--text"), borderColor: "transparent" } ] }, options: opts() });
+  Tower.chart("bullet", cfg(rows.map(() => 0), rows.map(() => 0)));
+  setTimeout(() => Tower.chart("bullet", cfg(rows.map(r => r[1]), rows.map(r => r[3]))), 150);
+});
+</script>
+{% endblock %}

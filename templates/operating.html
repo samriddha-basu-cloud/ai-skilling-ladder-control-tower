@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+<section class="panel beam-top">
+  <div class="panel-h"><div><h2>Government orchestrates the ecosystem; it does not rebuild it</h2><div class="sub">Six actors, each with a reason to join {{ tag('ass') }}</div></div></div>
+  <div class="g g-3">
+    {% for n, role, why in actors %}
+    <div style="background:var(--panel-2);border-radius:8px;padding:14px"><h3 style="font-size:14px">{{ n }}</h3><p class="small mt-8" style="color:var(--text-2)">{{ role }}</p><p class="small mt-8"><b>Why join:</b> {{ why }}</p></div>
+    {% endfor %}
+  </div>
+  {{ cite(['S02','S05','S01'], 'Actors and operating units from workbook Framework; rails from Data_Verified', 'D10, D11, D19, D20') }}
+</section>
+
+<section class="g g-3">
+  {% for n, d, b, dark in [('Skills Intelligence', 'Labour-market intelligence, Skill Graph, demand forecasting, emerging-skill detection', 'SIDH data, NCS, eShram, IndiaAI datasets', True), ('Delivery', 'Learning pathways, Trainer Corps, regional hubs, AI Skill Credits', 'FSP, SOAR, NIELIT, PM-SETU ITIs, iGOT Karmayogi', True), ('Outcomes', 'Assessment, apprenticeships, employment, mobility, productivity', 'NCVET awarding bodies, NAPS, APAAR/ABC, DigiLocker', False)] %}
+  <div class="panel" style="background:{{ '#2E2E38' if dark else '#FFE600' }};color:{{ '#fff' if dark else '#1A1A24' }};border-color:transparent">
+    <h3 style="font-size:15px">{{ n }}</h3><p class="small mt-8">{{ d }}</p><p class="small mt-8" style="opacity:.8"><i>Built on: {{ b }}</i></p>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="g g-2">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Human-in-the-loop by design</h2><div class="sub">No credential or funding decision is taken by AI alone</div></div></div>
+    <div class="g g-2" style="gap:10px">
+      <div style="background:#2E2E38;color:#fff;border-radius:8px;padding:14px"><b style="color:#FFE600">AI does</b><p class="small mt-8">Diagnose, predict, recommend, tutor, translate, match, flag fraud, detect emerging skills, trigger curriculum refresh</p></div>
+      <div style="background:#FFE600;color:#1A1A24;border-radius:8px;padding:14px"><b>Humans do</b><p class="small mt-8">Mentor, assess high-stakes competence, counsel, validate at work, govern, override, intervene</p></div>
+    </div>
+    <h3 class="mt-16" style="font-size:13px">Responsible AI and data guardrails</h3>
+    <ul class="small mt-8" style="margin:0;padding-left:18px;display:grid;gap:4px;color:var(--text-2)">
+      <li>Consent-based Passport; the learner controls sharing (DPDP Act 2023) {{ src(['S22']) }}</li>
+      <li>Expert verification before any AI-generated content is released</li>
+      <li>Bias audits of matching and assessment by gender, region, language, disability</li>
+      <li>CERT-In-aligned security; independent audit of assessment integrity</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>Digital-first is not digital-only</h2><div class="sub">Inclusion designed in, not added later</div></div></div>
+    <dl class="kv small">
+      <dt>Language</dt><dd>Vernacular and voice via BHASHINI (already integrated with SIDH) {{ src(['S02']) }}</dd>
+      <dt>Access</dt><dd>Assisted learning at CSCs and hubs; low-bandwidth, offline-ready modules</dd>
+      <dt>Women</dt><dd>Flexible timings, credit top-ups, women-led cohorts; target measured at conversion</dd>
+      <dt>PwD</dt><dd>Accessible content, assistive tech, adapted assessment</dd>
+      <dt>Informal and MSME</dt><dd>eShram-linked outreach; cluster problem statements at hubs</dd>
+      <dt>Govt and educators</dt><dd>iGOT Karmayogi paths; Trainer Corps for faculty</dd>
+    </dl>
+  </div>
+</section>
+
+<section class="hero">
+  <div style="position:relative;z-index:1">
+    <div class="small" style="color:#A0A0AE">Change plan on EY Humans@Center (EY and Oxford Said): human-centred transformations are 2.6x more likely to succeed. [S32]</div>
+    <h2 class="mt-8" style="max-width:28ch">The reform is a national transformation. Score the six human drivers and transformation confidence.</h2>
+    <p>Scores are team judgements to be replaced by a stakeholder pulse survey in Phase 0. The index tells the Council whether to mobilise, pilot or scale.</p>
+  </div>
+  <div style="position:relative;z-index:1;text-align:center">
+    <div class="big-dial" id="dial">{{ idx.readiness }}</div>
+    <div style="color:#A0A0AE;margin-top:6px">Change readiness index (0 to 100)</div>
+    <div class="mt-12"><span class="chip" id="band" style="color:#fff;border-color:#FFE600">{{ idx.band }}</span></div>
+    <div class="small mt-12" style="color:#A0A0AE">Weakest drivers: <b id="weak" style="color:#fff">{{ idx.weakest|join(', ') }}</b></div>
+  </div>
+</section>
+
+<section class="g g-3" id="drivers">
+  {% for d in hc %}
+  <div class="driver" data-d="{{ d.driver }}">
+    <div class="row"><h3>{{ d.driver }}</h3><span class="spacer"></span><b class="val" style="font-size:18px">{{ d.baseline }}</b><span class="muted small">/ 5, target {{ d.target }}</span></div>
+    <p class="small muted mt-8">{{ d.question }}</p>
+    <div class="gauge"><div class="now" style="width:{{ d.baseline/5*100 }}%"></div><div class="tgt" style="left:{{ d.target/5*100 }}%"></div></div>
+    <input type="range" min="1" max="5" step="0.1" value="{{ d.baseline }}" aria-label="{{ d.driver }} score">
+    <ul>{% for a in d.actions %}<li>{{ a }}</li>{% endfor %}</ul>
+    <div class="small mt-8"><span class="muted">Owner:</span> {{ d.owner }}</div>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="g g-2">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Six drivers: today vs FY29 gate</h2><div class="sub">Scores from stakeholder interviews and prelim evidence (team assessment)</div></div></div>
+    <div class="chart h-300"><canvas id="hcRadar"></canvas></div>
+    {{ cite(['S32'], 'Driver scores are team judgements pending a Phase 0 stakeholder pulse') }}
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>Transformation confidence</h2><div class="sub">Capabilities, content and culture</div></div></div>
+    <div class="g" style="gap:14px" id="c3">
+      {% for c in c3 %}
+      <div class="form-row" data-c="{{ c.c }}">
+        <label>{{ c.c }}: <span style="font-weight:500">{{ c.q }}</span> <b class="v" style="color:var(--text)">{{ c.baseline }}</b></label>
+        <input type="range" min="1" max="5" step="0.1" value="{{ c.baseline }}" aria-label="{{ c.c }}">
+      </div>
+      {% endfor %}
+    </div>
+    <p class="small muted mt-16">Index = 60% six-driver average + 40% confidence average, scaled to 100. Below 55: mobilise first. 55 to 75: pilot-ready. Above 75: ready to scale.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const HC = {{ hc|tojson }};
+const P = Tower.palette;
+function radar() {
+  const now = [...document.querySelectorAll(".driver input")].map(i => +i.value);
+  Tower.chart("hcRadar", {
+    type: "radar",
+    data: { labels: HC.map(d => d.driver), datasets: [
+      { label: "Today", data: now, borderColor: P.beam, backgroundColor: "rgba(255,230,0,.2)", pointBackgroundColor: P.beam },
+      { label: "FY29 target", data: HC.map(d => d.target), borderColor: P.teal, borderDash: [4, 4], backgroundColor: "transparent" }
+    ]},
+    options: { plugins: { legend: { position: "bottom" } }, scales: { r: { min: 0, max: 5, ticks: { display: false }, grid: { color: Tower.css("--line") }, angleLines: { color: Tower.css("--line") }, pointLabels: { color: Tower.css("--text-2") } } } }
+  });
+}
+let t;
+async function update() {
+  const scores = {}, conf = {};
+  document.querySelectorAll(".driver").forEach(el => { const v = +el.querySelector("input").value; scores[el.dataset.d] = v; el.querySelector(".val").textContent = v.toFixed(1); el.querySelector(".now").style.width = v / 5 * 100 + "%"; });
+  document.querySelectorAll("#c3 [data-c]").forEach(el => { const v = +el.querySelector("input").value; conf[el.dataset.c] = v; el.querySelector(".v").textContent = v.toFixed(1); });
+  radar();
+  clearTimeout(t);
+  t = setTimeout(async () => { try { const r = await Tower.api("/api/change", { scores, conf }); dial.textContent = r.readiness; band.textContent = r.band; weak.textContent = r.weakest.join(", "); } catch (e) { Tower.toast(e.message); } }, 120);
+}
+document.addEventListener("DOMContentLoaded", () => {
+  radar();
+  document.querySelectorAll(".driver input, #c3 input").forEach(i => i.addEventListener("input", update));
+});
+</script>
+{% endblock %}

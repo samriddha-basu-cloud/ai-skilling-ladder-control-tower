@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+<section class="panel beam-top">
+  <div class="panel-h">
+    <div><h2>Six-level national AI capability ladder</h2><div class="sub">Climb on evidence, never attendance. Every level is assessed on three dimensions. Select a level. {{ tag('ass') }}</div></div>
+    <div class="actions">{% for d, c, ink in dims %}<span class="chip" style="background:{{ c }};color:{{ ink }};border-color:{{ c }}">{{ d }}</span>{% endfor %}</div>
+  </div>
+  <div class="g g-7-5">
+    <div class="ladder6" id="lad">
+      {% for L in ladder|reverse %}
+      <div class="lv {% if L.code == 'L2' %}sel{% endif %}" data-code="{{ L.code }}" tabindex="0" style="width:{{ 70 + loop.index0 * 6 }}%">
+        <div class="c" style="background:{{ L.color }};color:{{ L.ink }}">{{ L.code }}</div>
+        <div class="b"><h4>{{ L.name }}</h4><p>{{ L.who }}</p></div>
+      </div>
+      {% endfor %}
+      <p class="small muted mt-8">Widths show target population, largest at L0. {{ refresh }}</p>
+    </div>
+    <div id="lvDetail" aria-live="polite"></div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-h"><div><h2>The learner journey: every step writes evidence to the Passport</h2><div class="sub">AI runs the system; a human makes every high-stakes call {{ tag('ass') }}</div></div></div>
+  <div class="g" style="grid-template-columns:repeat(6,minmax(0,1fr));gap:10px">
+    {% for n, ai, hu, pp in [('Diagnose','Gap diagnosis in the learner\'s language','Counsellor at hub or CSC','Baseline level'),('Learn','Adaptive tutoring, translation','Trainer Corps facilitator','Modules completed'),('Demonstrate','Adaptive item bank, integrity flags','Certified assessor decides','Verified level'),('Apply','Project and apprenticeship matching','Workplace mentor','Project evidence'),('Recognise','Fraud and duplicate detection','Employer validates','Verifiable credential'),('Move','Career and job matching','Career counsellor','Outcome at 6 and 12 months')] %}
+    <div style="background:var(--panel-2);border-radius:8px;padding:12px">
+      <div class="row"><span class="chip" style="background:#2E2E38;color:#fff;border-color:#2E2E38">{{ loop.index }}</span><b>{{ n }}</b></div>
+      <p class="small mt-8"><b style="color:var(--blue)">AI</b> {{ ai }}</p>
+      <p class="small mt-8"><b style="color:var(--orange)">Human</b> {{ hu }}</p>
+      <p class="small mt-8"><b>Passport</b> {{ pp }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="small mt-12"><b>Refresh:</b> when the skill-relevance KPI flags decay, the learner re-enters at Diagnose. Reskilling becomes a loop, not an event.</p>
+</section>
+
+<section class="g g-2">
+  <div class="panel">
+    <div class="panel-h"><div><h2>Where today's programmes stop</h2><div class="sub">Certified as % of enrolled {{ tag('der') }} {{ src(['S01','S02']) }}</div></div></div>
+    <div class="chart h-260"><canvas id="progChart"></canvas></div>
+    {{ cite(['S01','S02'], 'FSP 58.3% on the state table (≈57% on rounded headline figures, D23); SOAR 98,576 ÷ 4,96,426', 'D23, D25') }}
+    <p class="small muted mt-8">FSP counts all emerging-tech courses. Neither release reports competency, placement or productivity.</p>
+  </div>
+  <div class="panel">
+    <div class="panel-h"><div><h2>What the ladder adds: the pilot funnel</h2><div class="sub">Active scenario, share of entrants reaching each stage {{ tag('ass') }}</div></div></div>
+    <div class="chart h-260"><canvas id="pilotChart"></canvas></div>
+    {{ cite([], 'Active scenario; internal assumptions (workbook Budget_Model, KPIs_Targets)') }}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const LAD = {{ ladder|tojson }};
+const SIM = {{ sim|tojson }};
+const P = Tower.palette;
+function show(code) {
+  const L = LAD.find(x => x.code === code);
+  document.querySelectorAll("#lad .lv").forEach(e => e.classList.toggle("sel", e.dataset.code === code));
+  lvDetail.innerHTML = `<div class="row"><span class="chip" style="background:${L.color};color:${L.ink};border-color:${L.color}">${L.code}</span></div>
+    <h2 style="font-size:22px;margin-top:10px">${L.name}</h2><p class="mt-8" style="color:var(--text-2)">${L.what}</p>
+    <dl class="kv mt-16"><dt>Who</dt><dd>${L.who}</dd><dt>Proof to climb</dt><dd>${L.proof}</dd>
+    <dt>Assessed on</dt><dd>Technical AI, non-technical AI and responsible AI</dd>
+    <dt>Channels</dt><dd><div class="pill-row">${L.channels.map(c => `<span class="chip">${c}</span>`).join("")}</div></dd></dl>
+    <div class="row mt-16"><a class="btn" href="/navigator">Place a learner</a></div>`;
+}
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("#lad .lv").forEach(e => { e.addEventListener("click", () => show(e.dataset.code)); e.addEventListener("keydown", ev => { if (ev.key === "Enter") show(e.dataset.code); }); });
+  show("L2");
+  Tower.chart("progChart", { type: "bar",
+    data: { labels: ["FutureSkills PRIME (state table)", "SOAR"], datasets: [{ data: [58.3, 19.9], backgroundColor: [P.grey, P.red], borderRadius: 3 }] },
+    options: { indexAxis: "y", plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.x}% certified` } } }, scales: { x: { min: 0, max: 100, grid: { color: Tower.css("--line-soft") } }, y: { grid: { display: false } } } } });
+  const f = SIM.funnel, n0 = f[0].n;
+  Tower.chart("pilotChart", { type: "bar",
+    data: { labels: f.map(x => x.stage.replace("Workplace competency verified (VACR)", "Verified (VACR)").replace("Transitioned to apprenticeship / project", "Transitioned").replace("Moved to job / promotion / redeployment", "Moved to work")),
+      datasets: [{ data: f.map(x => +(x.n / n0 * 100).toFixed(1)), backgroundColor: f.map((x, i) => i === 4 ? P.beam : P.grey), borderRadius: 3 }] },
+    options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.y}% of entrants (${f[c.dataIndex].n.toLocaleString("en-IN")})` } } },
+      scales: { y: { min: 0, max: 100, grid: { color: Tower.css("--line-soft") } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } } } });
+});
+</script>
+{% endblock %}

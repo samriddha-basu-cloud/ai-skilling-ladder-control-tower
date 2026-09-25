@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="g g-8-4">
+  <div class="panel beam-top" style="display:flex;flex-direction:column;min-height:70vh">
+    <div class="panel-h">
+      <div><h2>Ask the Tower</h2><div class="sub">Strategy analyst for AI Skill Ladder 3.0. With a key it reasons with Claude and runs the tower's live model; without one it answers from the built-in rules engine.</div></div>
+      <div class="actions">
+        <span class="chip" id="modeChip"><i style="background:{{ '#2DB757' if cstat.connected else '#FFE600' }}"></i>{{ 'Claude connected' if cstat.connected else 'Rules engine' }}</span>
+        <button class="btn ghost" id="newChat" type="button">New chat</button>
+      </div>
+    </div>
+    <div class="chat" id="chat" aria-live="polite" style="flex:1;max-height:none;min-height:420px"></div>
+    <form class="chat-in" id="askForm">
+      <textarea class="input" id="q" rows="2" placeholder="Ask anything about the case, the solution, the numbers or the panel" maxlength="4000" aria-label="Your question" style="height:auto;min-height:48px;padding:12px;resize:vertical"></textarea>
+      <button class="btn primary" type="submit" id="sendBtn" style="height:48px">Ask</button>
+    </form>
+    <div class="sugg mt-12" id="sugg">
+      {% for s in ["Summarise AI Skill Ladder 3.0 in 60 seconds for the panel", "Why is VACR 40% hard at the target floors?", "Probability the pilot passes all gates?", "Why Bihar and Assam in the pilot?", "Grill me like an EY partner on the ₹290 Cr pilot", "What if completion is only 65%?", "How does the plan map to the SDGs?", "Place a 45-year-old bank clerk in Lucknow on the ladder"] %}
+      <button type="button">{{ s }}</button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="g" style="align-content:start">
+    <form class="panel" id="keyForm" autocomplete="off">
+      <div class="panel-h"><div><h2>Claude connection</h2><div class="sub" id="keyStatus">{% if cstat.connected %}Connected with {{ cstat.masked }} ({{ cstat.source }}){% else %}Not connected{% endif %}</div></div></div>
+      <div class="form-row"><label for="apiKey">Anthropic API key</label>
+        <input class="input" id="apiKey" type="password" placeholder="{{ 'Saved. Paste a new key to replace it' if cstat.connected else 'sk-ant-...' }}" autocomplete="off" spellcheck="false"></div>
+      <div class="form-row mt-12"><label for="model">Model</label>
+        <select class="input" id="model">{% for m, label in cstat.models %}<option value="{{ m }}" {% if m == cstat.model %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <label class="row small mt-12" style="cursor:pointer"><input type="checkbox" id="remember"> Remember on this computer</label>
+      <div class="row mt-12">
+        <button class="btn primary" type="submit" id="saveKey">Save and test</button>
+        <button class="btn ghost" type="button" id="clearKey">Disconnect</button>
+      </div>
+      <p class="small muted mt-12">The key is tested with a one-line request, then kept on this server only. It is never shown back or sent anywhere except the Anthropic API.</p>
+    </form>
+    <div class="panel small" style="color:var(--text-2)">
+      <h3 style="font-size:13px;color:var(--text)">Live tools Claude can run</h3>
+      <div class="pill-row mt-8">
+        {% for t in ["Pilot funnel and gates", "Monte Carlo", "Sensitivity", "FSP state data", "Envelope economics", "Job exposure (3A)", "Learner placement"] %}<span class="chip">{{ t }}</span>{% endfor %}
+      </div>
+      <p class="mt-12">Grounded in the case brief, the 3.0 deck, the evidence workbook (sources, verified data, excluded figures, Q&A), state data and benchmarks, for the scenario selected in the top bar. Excluded figures are never cited.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let HISTORY = [];
+try { HISTORY = JSON.parse(sessionStorage.getItem("tower-chat") || "[]"); } catch (e) { HISTORY = []; }
+const save = () => { try { sessionStorage.setItem("tower-chat", JSON.stringify(HISTORY.slice(-30))); } catch (e) {} };
+const TOOL_LABEL = { simulate_pilot: "Simulated pilot", monte_carlo: "Ran Monte Carlo", sensitivity: "Ran sensitivity", state_data: "Read state data", envelope_economics: "Checked envelope", job_exposure: "Ran job exposure", place_learner: "Placed learner" };
+
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function inline(s) {
+  return s.replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<i>$2</i>");
+}
+function md(src) {
+  const lines = esc(src).split("\n"); let html = "", i = 0;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (/^\s*\|.*\|\s*$/.test(l) && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}/.test(lines[i + 1])) {
+      const row = r => r.trim().replace(/^\||\|$/g, "").split("|").map(c => inline(c.trim()));
+      const head = row(l); i += 2; let body = "";
+      while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { body += "<tr>" + row(lines[i]).map(c => `<td>${c}</td>`).join("") + "</tr>"; i++; }
+      html += `<div class="tbl-wrap"><table class="tbl md-tbl"><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${body}</tbody></table></div>`; continue;
+    }
+    if (/^#{1,4}\s/.test(l)) { html += `<h4 class="md-h">${inline(l.replace(/^#{1,4}\s/, ""))}</h4>`; i++; continue; }
+    if (/^\s*[-*]\s+/.test(l)) { let items = ""; while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) { items += `<li>${inline(lines[i].replace(/^\s*[-*]\s+/, ""))}</li>`; i++; } html += `<ul>${items}</ul>`; continue; }
+    if (/^\s*\d+[.)]\s+/.test(l)) { let items = ""; while (i < lines.length && /^\s*\d+[.)]\s+/.test(lines[i])) { items += `<li>${inline(lines[i].replace(/^\s*\d+[.)]\s+/, ""))}</li>`; i++; } html += `<ol>${items}</ol>`; continue; }
+    if (!l.trim()) { i++; continue; }
+    let para = l; i++;
+    while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|\s*[-*]\s+|\s*\d+[.)]\s+|\s*\|)/.test(lines[i])) { para += "<br>" + lines[i]; i++; }
+    html += `<p>${inline(para)}</p>`;
+  }
+  return html;
+}
+
+function bubble(role, text, meta) {
+  const d = document.createElement("div");
+  d.className = "msg " + (role === "user" ? "me" : "bot md");
+  if (role === "user") d.textContent = text; else d.innerHTML = md(text);
+  if (meta) {
+    const m = document.createElement("div"); m.className = "src";
+    if (meta.tools && meta.tools.length) m.innerHTML = meta.tools.map(t => `<span class="chip">${esc(TOOL_LABEL[t.name] || t.name)}</span>`).join(" ") + "<br>";
+    if (meta.source === "claude") m.insertAdjacentText("beforeend", `Answered by ${meta.model || "Claude"} using tower data`);
+    else if (meta.source !== "error") m.insertAdjacentText("beforeend", "Answered by the rules engine");
+    (meta.links || []).forEach(l => { const a = document.createElement("a"); a.href = l.href; a.textContent = l.label; a.style.marginLeft = "10px"; m.appendChild(a); });
+    if (meta.source !== "error") {
+      const c = document.createElement("button"); c.type = "button"; c.className = "copy-btn"; c.textContent = "Copy";
+      c.addEventListener("click", () => { if (navigator.clipboard) navigator.clipboard.writeText(text); Tower.toast("Copied"); });
+      m.appendChild(c);
+    }
+    d.appendChild(m);
+  }
+  chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+  return d;
+}
+
+function renderHistory() {
+  chat.innerHTML = "";
+  if (!HISTORY.length) bubble("assistant", "Ask me anything about AI Skill Ladder 3.0: the case, the L0 to L5 ladder, the seven interventions, VACR and the six gates, the ₹290 Cr pilot, a state, or how to answer a tough panel question.", null);
+  HISTORY.forEach(h => bubble(h.role, h.content, h.meta));
+}
+
+async function ask(text) {
+  text = (text || "").trim(); if (!text) return;
+  bubble("user", text);
+  const prior = HISTORY.filter(h => h.meta?.source !== "error").map(h => ({ role: h.role, content: h.content }));
+  HISTORY.push({ role: "user", content: text }); save();
+  sendBtn.disabled = true;
+  const wait = bubble("assistant", "Thinking and running the model…");
+  wait.classList.add("thinking");
+  try {
+    const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q: text, history: prior }) });
+    const j = await r.json().catch(() => ({ error: "Unexpected response from the server." }));
+    wait.remove();
+    if (!r.ok) {
+      bubble("assistant", "**Claude request failed:** " + (j.error || "Unknown error"), { source: "error" });
+      if (j.fallback) { bubble("assistant", j.fallback.answer, { ...j.fallback, source: "rules" }); HISTORY.push({ role: "assistant", content: j.fallback.answer, meta: { source: "rules", links: j.fallback.links } }); }
+    } else {
+      bubble("assistant", j.answer, j);
+      HISTORY.push({ role: "assistant", content: j.answer, meta: { source: j.source, model: j.model, tools: j.tools, links: j.links } });
+    }
+    save();
+  } catch (e) { wait.remove(); bubble("assistant", "Network error: " + e.message, { source: "error" }); }
+  sendBtn.disabled = false; document.getElementById("q").focus();
+}
+
+function setStatus(s) {
+  keyStatus.textContent = s.connected ? `Connected with ${s.masked} (${s.source})` : "Not connected";
+  modeChip.innerHTML = `<i style="background:${s.connected ? "#2DB757" : "#FFE600"}"></i>${s.connected ? "Claude connected" : "Rules engine"}`;
+  apiKey.placeholder = s.connected ? "Saved. Paste a new key to replace it" : "sk-ant-...";
+  if (s.model) document.getElementById("model").value = s.model;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const qEl = document.getElementById("q");
+  renderHistory();
+  askForm.addEventListener("submit", e => { e.preventDefault(); const v = qEl.value; qEl.value = ""; ask(v); });
+  qEl.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askForm.requestSubmit(); } });
+  document.querySelectorAll("#sugg button").forEach(b => b.addEventListener("click", () => ask(b.textContent)));
+  newChat.addEventListener("click", () => { HISTORY = []; save(); renderHistory(); });
+  keyForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    saveKey.disabled = true; saveKey.textContent = "Testing…";
+    try {
+      const r = await fetch("/api/copilot/key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: apiKey.value.trim(), model: document.getElementById("model").value, remember: remember.checked }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Could not save the key");
+      apiKey.value = ""; setStatus(j); Tower.toast("Connected to Claude");
+    } catch (err) { keyStatus.textContent = err.message; Tower.toast(err.message); }
+    saveKey.disabled = false; saveKey.textContent = "Save and test";
+  });
+  clearKey.addEventListener("click", async () => {
+    const r = await fetch("/api/copilot/key", { method: "DELETE" }); setStatus(await r.json()); Tower.toast("Disconnected");
+  });
+});
+</script>
+{% endblock %}
