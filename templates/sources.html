@@ -62,8 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const sl = {}; DV.forEach(r => String(r[9]).split(/[,;]/).map(x => x.trim()).filter(Boolean).forEach(x => { const k = /^\d+$/.test(x) ? "Slide " + x : x; sl[k] = (sl[k] || 0) + 1; }));
   const sk = Object.keys(sl).sort();
   Tower.chart("slideChart", { type: "bar", data: { labels: sk, datasets: [{ data: sk.map(k => sl[k]), backgroundColor: P.grey, borderRadius: 3 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { grid: { color: Tower.css("--line-soft") }, ticks: { precision: 0 } }, x: { grid: { display: false } } } } });
-  const show = t => { document.querySelectorAll("#srcTabs button").forEach(x => x.classList.toggle("on", x.dataset.t === t)); ["src", "dv", "ex", "qa"].forEach(k => document.getElementById("tab-" + k).classList.toggle("hide", k !== t)); };
-  document.querySelectorAll("#srcTabs button").forEach(b => b.addEventListener("click", () => show(b.dataset.t)));
+  Tower.tabs("#srcTabs", { tabs: ["src", "dv", "ex", "qa"] });
   const h = location.hash.slice(1);
   if (/^S\d+$/.test(h)) { const el = document.getElementById(h); if (el) { el.style.background = "rgba(255,230,0,.18)"; el.scrollIntoView({ block: "center" }); } }
 });
