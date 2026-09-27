@@ -10,9 +10,9 @@
 
 <section class="g g-7-5">
   <div class="panel">
-    <div class="panel-h"><div><h2>State cartogram</h2><div class="sub">Tiles approximate geography. Pilot states outlined. Select a state.</div></div>
+    <div class="panel-h"><div><h2>India map</h2><div class="sub">Each state drawn in place, colored by data. Pilot states outlined. Select a state.</div></div>
       <div class="actions"><div class="seg" id="metric"><button class="on" data-m="rate">Certification rate</button><button data-m="enrolled">Enrolled</button></div></div></div>
-    <div class="tilemap" id="map"></div>
+    <div class="indiamap"><svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="India, states colored by data"></svg></div>
     <div class="scale" id="legend"></div>
     {{ cite(['S01'], 'Rates derived from the state table (sum 13,90,145 ÷ 23,85,414 = 58.3%)', 'FSP_State_Data') }}
     <p class="small muted mt-12">"Others" in the PIB table ({{ '{:,}'.format(nat.others[0]) }} enrolled) is not mapped. Emphasis in the drawer is a team rule of thumb {{ tag('ass') }}</p>
@@ -34,6 +34,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/india-geo.js') }}"></script>
 <script>
 const ST = {{ states|tojson }};
 let metric = "rate";
@@ -42,17 +43,23 @@ function colorOf(s) {
   if (metric === "rate") { const t = Math.min(Math.max((s.rate - 40) / 35, 0), 0.999); return ramp[Math.floor(t * ramp.length)]; }
   const t = Math.min(Math.log10(Math.max(s.enrolled, 10)) / 6, 0.999); return ramp[Math.floor(t * ramp.length)];
 }
+const GEO = window.INDIA_GEO;
+const STByCode = Object.fromEntries(ST.map(s => [s.code, s]));
 function drawMap() {
-  const grid = Array.from({ length: 7 }, () => Array(8).fill(null));
-  ST.forEach(s => { if (s.col !== null && s.row !== null) grid[s.row][s.col] = s; });
-  map.innerHTML = grid.flat().map(s => s ? `<div class="t" data-code="${s.code}" tabindex="0" title="${s.name}" style="background:${colorOf(s)};color:${["#9C9CA8", "#2E2E38"].includes(colorOf(s)) ? "#fff" : "#1A1A24"};${s.pilot ? "outline:3px solid #FF6D00;outline-offset:-3px" : ""}">${s.code}<small>${metric === "rate" ? s.rate + "%" : (s.enrolled >= 100000 ? (s.enrolled / 100000).toFixed(1) + "L" : Math.round(s.enrolled / 1000) + "k")}</small></div>` : `<div class="t empty"></div>`).join("");
-  map.querySelectorAll(".t[data-code]").forEach(t => { t.addEventListener("click", () => open(t.dataset.code)); t.addEventListener("keydown", e => { if (e.key === "Enter") open(t.dataset.code); }); });
+  map.setAttribute("viewBox", `0 0 ${GEO.width} ${GEO.height}`);
+  map.innerHTML = Object.entries(GEO.paths).map(([code, d]) => {
+    const s = STByCode[code];
+    if (!s) return "";
+    const fill = colorOf(s);
+    return `<path class="st" data-code="${code}" tabindex="0" d="${d}" fill="${fill}" stroke="${s.pilot ? "#FF6D00" : "var(--panel)"}" stroke-width="${s.pilot ? 2.4 : 0.8}"><title>${s.name}: ${metric === "rate" ? s.rate + "%" : s.enrolled.toLocaleString("en-IN") + " enrolled"}</title></path>`;
+  }).join("");
+  map.querySelectorAll(".st").forEach(t => { t.addEventListener("click", () => open(t.dataset.code)); t.addEventListener("keydown", e => { if (e.key === "Enter") open(t.dataset.code); }); });
   legend.innerHTML = metric === "rate" ? `40% ${ramp.map(c => `<i style="display:inline-block;width:22px;height:10px;background:${c}"></i>`).join("")} 75%+ &nbsp; <i style="display:inline-block;width:12px;height:12px;outline:3px solid #FF6D00"></i> pilot`
     : `10 ${ramp.map(c => `<i style="display:inline-block;width:22px;height:10px;background:${c}"></i>`).join("")} 10 lakh (log) &nbsp; <i style="display:inline-block;width:12px;height:12px;outline:3px solid #FF6D00"></i> pilot`;
 }
 async function open(code) {
   const p = await fetch("/api/state/" + code).then(r => r.json());
-  map.querySelectorAll(".t").forEach(t => t.classList.toggle("sel", t.dataset.code === code));
+  map.querySelectorAll(".st").forEach(t => t.classList.toggle("sel", t.dataset.code === code));
   Tower.drawer.open(`<span class="chip">${p.code}</span> ${p.pilot ? `<span class="chip" style="background:#FFE600;color:#1A1A24;border-color:#FFE600">Pilot: ${p.pilot}</span>` : ""}
     <h2 style="font-size:22px;margin:12px 0 4px">${p.name}</h2><p class="muted small">FutureSkills PRIME, PIB/MeitY 14 Aug 2026</p>
     <div class="g g-2 mt-16" style="gap:10px">
