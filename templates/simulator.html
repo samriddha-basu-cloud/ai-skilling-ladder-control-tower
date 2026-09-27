@@ -101,7 +101,7 @@
 
     <div class="g g-2">
       <div class="panel"><div class="panel-h"><div><h2>Six evidence gates</h2><div class="sub">Scale only if all pass (workbook KPIs_Targets)</div></div></div>
-        <div class="g" style="gap:8px" id="gates">{% for g in sim.gates %}<div class="gate" data-g="{{ g.id }}"><div class="gd">{{ g.id }}</div><div><h4>{{ g.name }} <span class="muted small">month {{ g.month }}</span></h4><p></p></div></div>{% endfor %}</div></div>
+        <div class="g" style="gap:8px" id="gates">{% for g in sim.gates %}<div class="gate" data-g="{{ g.id }}"><div class="gd">{{ g.id }}<span class="sr sr-status"></span></div><div><h4>{{ g.name }} <span class="muted small">month {{ g.month }}</span></h4><p></p></div></div>{% endfor %}</div></div>
       <div class="panel"><div class="panel-h"><div><h2>Budget</h2><div class="sub" id="budSub"></div></div></div><div class="chart h-340"><canvas id="budChart"></canvas></div>
         {{ cite([], 'Line items and unit costs: workbook Budget_Model, internal case assumptions') }}</div>
     </div>
@@ -122,7 +122,7 @@
 
 <section class="panel">
   <div class="panel-h"><div><h2>Compare scenarios</h2><div class="sub">Select up to five</div></div><div class="actions"><button class="btn" id="cmpBtn" title="Redraw the chart below for the checked scenarios">Compare</button></div></div>
-  <div class="pill-row" id="cmpList">{% for s in scenarios %}<label class="chip" style="cursor:pointer"><input type="checkbox" value="{{ s.id }}" {% if s.preset %}checked{% endif %}> {{ s.name }}{% if not s.preset %} <a href="#" class="del" data-id="{{ s.id }}" title="Delete" style="margin-left:4px">x</a>{% endif %}</label>{% endfor %}</div>
+  <div class="pill-row" id="cmpList">{% for s in scenarios %}<label class="chip" style="cursor:pointer"><input type="checkbox" value="{{ s.id }}" {% if s.preset %}checked{% endif %}> {{ s.name }}{% if not s.preset and s.owned %} <a href="#" class="del" data-id="{{ s.id }}" title="Delete" style="margin-left:4px">x</a>{% endif %}</label>{% endfor %}</div>
   <div class="chart h-300 mt-16"><canvas id="cmpChart"></canvas></div>
 </section>
 {% endblock %}
@@ -187,6 +187,7 @@ function paintDom(r) {
     const el = document.querySelector(`#gates .gate[data-g="${g.id}"]`);
     const was = el.classList.contains("pass");
     el.classList.toggle("pass", g.pass); el.classList.toggle("fail", !g.pass);
+    el.querySelector(".sr-status").textContent = " " + (g.pass ? "Pass" : "Fail");
     el.querySelector("p").textContent = g.detail;
     if (LAST && was !== g.pass) { el.classList.add("flip"); setTimeout(() => el.classList.remove("flip"), 450); Tower.pulse(el); }
   });
@@ -293,7 +294,9 @@ async function startDemo(idx) {
 /* ---------- server-backed features ---------- */
 async function runMC() {
   mcBtn.disabled = true; mcBtn.textContent = "Running...";
-  const m = await fetch("/api/montecarlo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ params: collect(), runs: 1000 }) }).then(x => x.json());
+  let m;
+  try { m = await Tower.api("/api/montecarlo", { params: collect(), runs: 1000 }); }
+  catch (e) { mcBtn.disabled = false; mcBtn.textContent = "Run 1,000 pilots"; Tower.errorBanner("Monte Carlo run failed: " + e.message); return; }
   mcBtn.disabled = false; mcBtn.textContent = "Run 1,000 pilots";
   Tower.tween("mP", m.p_vacr40, v => v.toFixed(1)); Tower.tween("mA", m.p_all_gates, v => v.toFixed(1));
   mPd.textContent = `P10 ${m.vacr.p10}%, median ${m.vacr.p50}%, P90 ${m.vacr.p90}%`;
@@ -306,7 +309,9 @@ async function runMC() {
 }
 async function compare() {
   const ids = [...document.querySelectorAll("#cmpList input:checked")].map(i => i.value).slice(0, 5);
-  const r = await fetch("/api/compare", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) }).then(x => x.json());
+  let r;
+  try { r = await Tower.api("/api/compare", { ids }); }
+  catch (e) { Tower.errorBanner("Could not compare scenarios: " + e.message); return; }
   const keys = [["vacr", "VACR"], ["completion", "Completion"], ["competency", "Competency"], ["transition", "Transition"], ["women", "Women share"]];
   const cols = [P.beam, P.grey, P.blue, P.red, P.teal];
   Tower.chart("cmpChart", { type: "bar", data: { labels: keys.map(k => k[1]), datasets: r.scenarios.map((s, i) => ({ label: `${s.name} (${s.gates_passed}/6 gates)`, data: keys.map(k => s.kpi[k[0]]), backgroundColor: cols[i % 5], borderRadius: 3 })) },
@@ -330,14 +335,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   demoNext.addEventListener("click", () => { DS.playing = false; demoPlay.textContent = "Play"; nextStep(); });
   demoStop.addEventListener("click", () => { DS.token++; clearTimeout(DS.timer); DS.d = null; demoStage.hidden = true; demoStage.classList.remove("float"); document.body.classList.remove("demo-on"); document.querySelectorAll(".demo-card").forEach(c => c.classList.remove("on")); });
-  applyBtn.addEventListener("click", async () => { await fetch("/api/active", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draft: collect() }) }); Tower.toast("Applied to every page as a draft scenario"); setTimeout(() => location.reload(), 600); });
+  applyBtn.addEventListener("click", async () => {
+    try { await Tower.api("/api/active", { draft: collect() }); Tower.toast("Applied to every page as a draft scenario"); setTimeout(() => location.reload(), 600); }
+    catch (e) { Tower.errorBanner("Could not apply the draft: " + e.message); }
+  });
   saveBtn.addEventListener("click", async () => {
     const name = prompt("Scenario name"); if (!name) return;
-    const r = await fetch("/api/scenarios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, params: collect() }) }).then(x => x.json());
-    if (r.error) return Tower.toast(r.error);
-    Tower.toast("Saved and set active"); setTimeout(() => location.reload(), 600);
+    try { await Tower.api("/api/scenarios", { name, params: collect() }); Tower.toast("Saved and set active"); setTimeout(() => location.reload(), 600); }
+    catch (e) { Tower.toast(e.message); }
   });
-  document.querySelectorAll("#cmpList .del").forEach(a => a.addEventListener("click", async e => { e.preventDefault(); if (!confirm("Delete this scenario?")) return; await fetch("/api/scenarios/" + a.dataset.id, { method: "DELETE" }); location.reload(); }));
+  document.querySelectorAll("#cmpList .del").forEach(a => a.addEventListener("click", async e => {
+    e.preventDefault(); if (!confirm("Delete this scenario?")) return;
+    try { await Tower.api("/api/scenarios/" + a.dataset.id, null, "DELETE"); location.reload(); }
+    catch (e) { Tower.errorBanner("Could not delete: " + e.message); }
+  }));
   mcBtn.addEventListener("click", runMC);
   cmpBtn.addEventListener("click", compare);
   compare();

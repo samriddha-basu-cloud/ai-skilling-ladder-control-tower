@@ -111,14 +111,9 @@ const ENV = {{ env|tojson }};
 const ST = {{ states|tojson }};
 const P = Tower.palette;
 const drawn = {};
+const LAB_TABS = ["tree", "consistency", "sens", "econ", "breakeven", "portfolio"];
 function tabs() {
-  document.querySelectorAll("#labTabs button").forEach(b => b.addEventListener("click", () => {
-    document.querySelectorAll("#labTabs button").forEach(x => x.classList.remove("on")); b.classList.add("on");
-    ["tree", "consistency", "sens", "econ", "breakeven", "portfolio"].forEach(t => document.getElementById("tab-" + t).classList.toggle("hide", t !== b.dataset.t));
-    const f = { consistency: drawCons, sens: drawSens, econ: drawEcon, breakeven: drawBE, portfolio: drawPort }[b.dataset.t];
-    if (f) f();
-    history.replaceState(null, "", "#" + b.dataset.t);
-  }));
+  Tower.tabs("#labTabs", { tabs: LAB_TABS, hash: true, onShow: t => { const f = { consistency: drawCons, sens: drawSens, econ: drawEcon, breakeven: drawBE, portfolio: drawPort }[t]; if (f) f(); } });
 }
 function whatIf() {
   const v = {};
@@ -195,14 +190,12 @@ function drawPort() {
   pList.insertAdjacentHTML("beforeend", `<div class="small muted mt-8">Average certification rate ${avg.toFixed(1)}%; ${south} of ${pil.length} states in the South.</div>`);
 }
 document.addEventListener("DOMContentLoaded", () => {
-  tabs();
   document.querySelectorAll(".driver-node input").forEach(i => i.addEventListener("input", whatIf));
   wiReset.addEventListener("click", () => { document.querySelectorAll(".driver-node").forEach(n => { n.querySelector("input").value = SIM.params[n.dataset.k]; }); whatIf(); });
   [beUplift, beYears, beEarn].forEach(el => el.addEventListener("input", drawBE));
   whatIf();
   document.querySelectorAll("#pfSel button").forEach(b => b.addEventListener("click", () => { document.querySelectorAll("#pfSel button").forEach(x => x.classList.remove("on")); b.classList.add("on"); PF = b.dataset.v; drawPort(); }));
-  const h = location.hash.slice(1);
-  if (["consistency", "sens", "econ", "breakeven", "portfolio"].includes(h)) document.querySelector(`#labTabs button[data-t="${h}"]`).click();
+  tabs();
 });
 </script>
 {% endblock %}

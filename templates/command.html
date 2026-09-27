@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_m.html" import tag, src, cite with context %}
+{% from "_m.html" import tag, src, cite, sr with context %}
 {% block content %}
 {% set k = sim.kpi %}
 <section class="hero">
@@ -25,12 +25,26 @@
   </div>
 </section>
 
+{% set d = decision %}
+<section class="panel beam-top">
+  <div class="panel-h"><div><h2>Decision</h2><div class="sub">Deterministic call from the six evidence gates, not an opaque model</div></div>
+    <div class="actions"><a class="btn" href="/kpis">Open KPI scorecard</a><a class="btn ghost" href="/stress">Stress test it</a></div></div>
+  <div class="decision-panel">
+    <div class="decision-badge {{ d.verdict }}">{{ d.verdict }}</div>
+    <div class="decision-why">
+      <p>{{ d.reason }}</p>
+      <div class="action">{{ d.recommended_action }}</div>
+      <p class="small muted mt-8">Primary bottleneck: {{ bottleneck.statement }}</p>
+    </div>
+  </div>
+</section>
+
 <section class="g g-5">
   <div class="tile" title="Verified Applied Competency Rate: the North Star metric, workplace-verified ÷ entrants"><div class="l">VACR, active scenario {{ tag('tgt') }}</div><div class="v">{{ k.vacr }}<small>%</small></div><div class="d"><span class="{{ 'up' if k.vacr >= 40 else 'down' }}">Target ≥40%</span> {{ active_scenario.name }}</div></div>
   <div class="tile" title="Entrants who complete, are assessed competent, transition, and are employer-verified"><div class="l">Verified converts in pilot {{ tag('ass') }}</div><div class="v">{{ '{:,}'.format(sim.verified) }}</div><div class="d">of {{ '{:,}'.format(sim.params.entrants) }} entrants</div></div>
   <div class="tile" title="Total pilot spend divided by verified converts; must stay within the affordability band"><div class="l">Cost per verified convert {{ tag('der') }}</div><div class="v">₹{{ '{:,}'.format(sim.econ.cost_per_convert or 0) }}</div><div class="d"><span class="{{ 'up' if (sim.econ.cost_per_convert or 9e9) <= sim.econ.band else 'down' }}">Band ≤₹{{ '{:,}'.format(sim.econ.band) }}</span></div></div>
   <div class="tile" title="Cost per convert expressed as months of average urban salaried earnings recovered"><div class="l">Break-even, months of earnings {{ tag('der') }}</div><div class="v">{{ sim.econ.months_of_earnings }}</div><div class="d">at ₹24,434/month urban salaried {{ src(['S30']) }}</div></div>
-  <div class="tile" title="The six pass/fail checks on KPIs and gates that decide whether to scale the pilot"><div class="l">Evidence gates passed</div><div class="v">{{ sim.gates_passed }}<small>/ 6</small></div><div class="d">{% for g in sim.gates %}<span class="chip" style="padding:0 6px" title="{{ g.name }}: {{ 'pass' if g.pass else 'fail' }}"><i style="background:{{ '#2DB757' if g.pass else '#FF4136' }}"></i>{{ g.id }}</span>{% endfor %}</div></div>
+  <div class="tile" title="The six pass/fail checks on KPIs and gates that decide whether to scale the pilot"><div class="l">Evidence gates passed</div><div class="v">{{ sim.gates_passed }}<small>/ 6</small></div><div class="d">{% for g in sim.gates %}<span class="chip" style="padding:0 6px" title="{{ g.name }}: {{ 'pass' if g.pass else 'fail' }}"><i style="background:{{ '#2DB757' if g.pass else '#FF4136' }}"></i>{{ g.id }}{{ sr(' ' + ('Pass' if g.pass else 'Fail')) }}</span>{% endfor %}</div></div>
 </section>
 
 <section class="g g-8-4">
