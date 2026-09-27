@@ -8,6 +8,7 @@ import csv
 import io
 import json
 import os
+import secrets
 import threading
 import uuid
 from datetime import datetime
@@ -26,7 +27,10 @@ STORE = os.path.join(BASE_DIR, "instance", "scenarios.json")
 _lock = threading.Lock()
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("TOWER_SECRET", "vertex-ai-skill-ladder-3")
+# No hardcoded secret fallback: use TOWER_SECRET in any deployment where sessions must survive a
+# restart, otherwise a fresh random key per process (sessions are non-sensitive: scenario choice
+# and a copilot client id, so a restart-time reset is an acceptable trade for not shipping a secret).
+app.config["SECRET_KEY"] = os.environ.get("TOWER_SECRET") or secrets.token_hex(32)
 app.config["JSON_SORT_KEYS"] = False
 
 NAV_GROUPS = [
@@ -34,7 +38,7 @@ NAV_GROUPS = [
     ("Diagnose", [("framing", "Problem framing", "/framing"), ("exposure", "Job exposure lab", "/exposure"), ("matrix", "Diagnosis matrix", "/matrix")]),
     ("Design", [("ladder", "Skill ladder", "/ladder"), ("interventions", "Seven interventions", "/interventions"),
                 ("operating", "Operating model", "/operating"), ("value", "Long-term value", "/value")]),
-    ("Decide", [("strategy", "Strategy lab", "/strategy"), ("simulator", "Pilot simulator", "/simulator"), ("states", "State view", "/states")]),
+    ("Decide", [("strategy", "Strategy lab", "/strategy"), ("simulator", "Pilot simulator", "/simulator"), ("stress", "Stress test", "/stress"), ("states", "State view", "/states")]),
     ("Deliver", [("roadmap", "Roadmap and risks", "/roadmap"), ("kpis", "KPIs and gates", "/kpis")]),
     ("Engage", [("navigator", "Pathway navigator", "/navigator"), ("ask", "Ask the Tower", "/ask")]),
     ("Evidence", [("sources", "Sources and data", "/sources"), ("brief", "Executive brief", "/brief")]),
@@ -113,7 +117,8 @@ def command():
     top_states = sorted([s for s in D.STATES if s["enrolled"] >= 20000], key=lambda s: -s["rate"])
     return render_template("command.html", page="command", title="Command centre", sim=sim, H=D.H, fsp=D.FSP_FUNNEL, soar=D.SOAR,
                            signals=E.signals(sim), env=E.envelope(), states=top_states, nat=D.FSP_STATE_TOTAL, demand=D.DEMAND,
-                           workforce=D.WORKFORCE, chg=I.change_index(), ltv=I.ltv(sim), fund=D.FSP_FUNDING, iti=D.ITI_GROWTH)
+                           workforce=D.WORKFORCE, chg=I.change_index(), ltv=I.ltv(sim), fund=D.FSP_FUNDING, iti=D.ITI_GROWTH,
+                           decision=E.decision(sim), bottleneck=E.bottleneck(sim))
 
 
 @app.route("/framing")
@@ -193,7 +198,13 @@ def roadmap():
 @app.route("/kpis")
 def kpis():
     sc, sim = active_sim()
-    return page("kpis", rows=E.kpi_scorecard(sim), sim=sim, kirk=F.KIRKPATRICK, sdgs=D.SDGS)
+    return page("kpis", rows=E.kpi_scorecard(sim), sim=sim, kirk=F.KIRKPATRICK, sdgs=D.SDGS, decision=E.decision(sim))
+
+
+@app.route("/stress")
+def stress():
+    sc, sim = active_sim()
+    return page("stress", sim=sim, shocks=E.SHOCKS, decision=E.decision(sim))
 
 
 @app.route("/navigator")
@@ -244,6 +255,19 @@ def api_mc():
 @app.post("/api/sensitivity")
 def api_sens():
     return jsonify(E.sensitivity(_body().get("params")))
+
+
+@app.post("/api/stress")
+def api_stress():
+    b = _body()
+    sc, sim = active_sim()
+    params = E.clean(b.get("params")) if b.get("params") else sim["params"]
+    if b.get("all"):
+        return jsonify({"shocks": [E.stress_test(params, s["id"]) for s in E.SHOCKS]})
+    shock = str(b.get("shock", ""))
+    if shock not in E.SHOCK_INDEX:
+        return jsonify({"error": "Unknown shock id."}), 400
+    return jsonify(E.stress_test(params, shock))
 
 
 @app.post("/api/compare")
@@ -446,6 +470,15 @@ def nf(_):
         return jsonify({"error": "Not found"}), 404
     return render_template("error.html", page=None, title="Not found", code=404,
                            message="This view does not exist. Use the navigation to return to the control tower."), 404
+
+
+@app.errorhandler(500)
+def server_error(e):
+    app.logger.exception("Unhandled server error")
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Something went wrong processing that request."}), 500
+    return render_template("error.html", page=None, title="Error", code=500,
+                           message="Something went wrong. Use the navigation to return to the control tower."), 500
 
 
 if __name__ == "__main__":

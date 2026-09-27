@@ -62,6 +62,19 @@
   <div class="panel-h"><div><h2>Six evidence gates</h2><div class="sub">Scale only if all pass</div></div></div>
   <div class="g g-3" style="gap:8px">{% for g in sim.gates %}<div class="gate {{ 'pass' if g.pass else 'fail' }}"><div class="gd">{{ g.id }}</div><div><h4>{{ g.name }} <span class="muted small">M{{ g.month }}</span></h4><p>{{ g.detail }}</p></div></div>{% endfor %}</div>
 </section>
+
+<section class="panel beam-top">
+  <div class="panel-h"><div><h2>Decision</h2><div class="sub">WHY? Deterministic, explainable call from the gates above (RULE 8)</div></div>
+    <div class="actions"><a class="btn ghost" href="/stress">Stress test it</a></div></div>
+  <div class="decision-panel">
+    <div class="decision-badge {{ decision.verdict }}">{{ decision.verdict }}</div>
+    <div class="decision-why">
+      <p>{{ decision.reason }}</p>
+      {% if decision.primary_gate %}<p class="small muted mt-8">Primary issue: {{ decision.primary_gate }} {{ (sim.gates|selectattr('id','equalto',decision.primary_gate)|first).name }}</p>{% endif %}
+      <div class="action">{{ decision.recommended_action }}</div>
+    </div>
+  </div>
+</section>
 {% endblock %}
 
 {% block scripts %}

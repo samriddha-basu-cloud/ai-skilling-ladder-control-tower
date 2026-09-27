@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "_m.html" import tag, src, cite with context %}
+{% block content %}
+<section class="hero">
+  <div style="position:relative;z-index:1">
+    <div class="small" style="color:#A0A0AE">Failure cascade {{ tag('ass') }}</div>
+    <h2 class="mt-8" style="max-width:24ch">What breaks the pilot, and how far?</h2>
+    <p>Pick a shock. The tower reruns the active scenario with that single input moved, and shows the cascade from the shock to the KPI it hits, to VACR, to the gates, to the decision. Every output here is a modelled scenario effect on the active scenario's inputs, not an observed real-world impact.</p>
+  </div>
+  <div style="position:relative;z-index:1;text-align:center">
+    <div class="small" style="color:#A0A0AE">Active scenario</div>
+    <div style="font-size:20px;font-weight:800;margin-top:6px">{{ active_scenario.name }}</div>
+    <div class="mt-12"><span class="chip" style="color:#fff;border-color:#FFE600">Baseline: {{ decision.verdict }}</span></div>
+  </div>
+</section>
+
+<section class="g g-4-8">
+  <div class="panel" style="align-self:start">
+    <h3 style="font-size:14px">Shocks</h3>
+    <p class="small muted">Each shock moves one input on top of the active scenario; it does not compound with the others.</p>
+    <div class="shock-list mt-12" id="shockList">
+      {% for s in shocks %}
+      <button class="shock-btn" type="button" data-s="{{ s.id }}"><span><span class="lbl">{{ s.label }}</span><br><span class="hit">{{ s.kpi_hit }}</span></span><span class="chip">Run</span></button>
+      {% endfor %}
+    </div>
+    <button class="btn mt-16" id="runAll" type="button">Run all 7 shocks</button>
+  </div>
+
+  <div style="display:grid;gap:20px;align-content:start">
+    <div class="panel" id="cascadePanel">
+      <div class="panel-h"><div><h2>Cascade</h2><div class="sub" id="cascadeSub">Pick a shock to see its effect</div></div></div>
+      <div class="cascade" id="cascade"><p class="small muted">No shock applied yet. The scenario is at its baseline decision, <b>{{ decision.verdict }}</b>.</p></div>
+    </div>
+
+    <div class="panel flush" id="allPanel" hidden>
+      <div class="panel-h" style="padding:20px 20px 0"><div><h2>All shocks at a glance</h2><div class="sub">Each row applies one shock alone to the active scenario</div></div></div>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Shock</th><th class="num">VACR before</th><th class="num">VACR after</th><th class="num">Δ VACR pp</th><th>Gates before</th><th>Gates after</th><th>Decision before → after</th></tr></thead>
+        <tbody id="allBody"></tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+{{ cite([], 'Shocks apply directly to the pilot engine\'s own inputs (completion, competency, employer satisfaction, uptake, cost multiplier, women/tier relative conversion); every cascade shown is computed by core/engine.py, not hand-labelled.') }}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const VERDICT_WORD = { SCALE: "Ready to scale", HOLD: "Hold", REDESIGN: "Redesign", STOP: "Stop" };
+
+function cascadeHtml(r) {
+  const s = r.shock, b = r.before, a = r.after;
+  const rows = [
+    { t: "Shock", body: `<b>${s.label}</b><p>${s.kpi_hit}</p>` },
+    { t: "Primary KPI impact", body: `<b>VACR ${b.kpi.vacr.toFixed(1)}% → ${a.kpi.vacr.toFixed(1)}%</b><p>${r.vacr_delta >= 0 ? "+" : ""}${r.vacr_delta} pp vs the pre-shock scenario</p>` },
+    { t: "Gate impact", body: r.gate_flips.length ? `<b>${r.gate_flips.join(", ")} now fail</b><p>Gates passing: ${b.gates_passed}/6 → ${a.gates_passed}/6</p>` : `<b>No gate flips</b><p>Gates passing: ${b.gates_passed}/6 → ${a.gates_passed}/6</p>` },
+    { t: "Decision impact", body: r.decision_changed ? `<b>${VERDICT_WORD[b.decision.verdict]} → ${VERDICT_WORD[a.decision.verdict]}</b><p>${a.decision.reason}</p>` : `<b>Still ${VERDICT_WORD[a.decision.verdict]}</b><p>${a.decision.reason}</p>` },
+  ];
+  return rows.map((row, i) => `<div class="cascade-step"><div class="arrow">${i === 0 ? "" : "↓"}</div><div class="body"><span class="small muted">${row.t.toUpperCase()}</span>${row.body}</div></div>`).join("");
+}
+
+async function runShock(id) {
+  document.querySelectorAll(".shock-btn").forEach(b => b.classList.toggle("on", b.dataset.s === id));
+  cascadeSub.textContent = "Computing...";
+  const r = await Tower.api("/api/stress", { shock: id });
+  cascade.innerHTML = cascadeHtml(r);
+  cascadeSub.textContent = "Applied to the active scenario alone; other inputs unchanged";
+}
+
+async function runAllShocks(btn) {
+  btn.disabled = true; btn.textContent = "Running...";
+  const r = await Tower.api("/api/stress", { all: true });
+  allBody.innerHTML = r.shocks.map(x => `<tr><td>${x.shock.label}</td><td class="num">${x.before.kpi.vacr.toFixed(1)}%</td><td class="num">${x.after.kpi.vacr.toFixed(1)}%</td>
+    <td class="num" style="color:${x.vacr_delta < 0 ? 'var(--red)' : 'inherit'}">${x.vacr_delta >= 0 ? "+" : ""}${x.vacr_delta}</td>
+    <td>${x.before.gates_passed}/6</td><td>${x.after.gates_passed}/6</td>
+    <td>${x.decision_changed ? `<b style="color:var(--red)">${VERDICT_WORD[x.before.decision.verdict]} → ${VERDICT_WORD[x.after.decision.verdict]}</b>` : VERDICT_WORD[x.after.decision.verdict]}</td></tr>`).join("");
+  allPanel.hidden = false;
+  btn.disabled = false; btn.textContent = "Run all 7 shocks";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".shock-btn").forEach(b => b.addEventListener("click", () => runShock(b.dataset.s)));
+  document.getElementById("runAll").addEventListener("click", e => runAllShocks(e.currentTarget));
+});
+</script>
+{% endblock %}

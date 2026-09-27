@@ -368,6 +368,107 @@ def kpi_scorecard(sim):
     return rows
 
 
+# --------------------------------------------------------------------------------------
+# Decision engine (deterministic, rule-based on the six gates; never an opaque model)
+# --------------------------------------------------------------------------------------
+GATE_LEVERS = {
+    "G1": [], "G2": ["I2", "I5"], "G3": ["I2", "I5"], "G4": ["I3", "I7"], "G5": [], "G6": ["I4", "I6"],
+}
+DECISIONS = {
+    "SCALE": "All six evidence gates pass in the active scenario.",
+    "HOLD": "Foundational gates have not yet had time to clear; hold before judging outcome or economics.",
+    "REDESIGN": "A core outcome, cost or equity gate fails. Fix the design before adding spend or entrants.",
+    "STOP": "Workforce outcome and economic viability both fail: the pilot is not converting learners to affordable, verified work.",
+}
+
+
+def decision(sim):
+    """Deterministic SCALE / HOLD / REDESIGN / STOP call from the six gates. Never an opaque model (RULE 8/9)."""
+    g = {x["id"]: x for x in sim["gates"]}
+    if not g["G1"]["pass"]:
+        verdict, why = "HOLD", "Technical feasibility (G1) is not verified: the Passport does not yet issue and verify across SIDH/APAAR/DigiLocker. Nothing downstream can be trusted until this clears."
+        primary = "G1"
+    elif not g["G4"]["pass"] and not g["G5"]["pass"]:
+        verdict, why = "STOP", "Workforce outcome (G4) and economic viability (G5) both fail: the pilot is neither converting learners to verified work nor within its cost band."
+        primary = "G4" if abs(sim["kpi"]["vacr"] - 40) >= abs((sim["econ"]["cost_per_convert"] or 0) - sim["econ"]["band"]) / 1000 else "G5"
+    elif not g["G4"]["pass"]:
+        verdict, why = "REDESIGN", "Workforce outcome (G4) fails: VACR, transition or employer satisfaction is short of target."
+        primary = "G4"
+    elif not g["G5"]["pass"]:
+        verdict, why = "REDESIGN", "Economic viability (G5) fails: cost per verified convert or total spend breaches its cap."
+        primary = "G5"
+    elif not g["G6"]["pass"]:
+        verdict, why = "REDESIGN", "Equity (G6) fails: women or Tier-2/3 share of verified converts is below target."
+        primary = "G6"
+    elif not g["G2"]["pass"] or not g["G3"]["pass"]:
+        verdict, why = "HOLD", "Learner adoption (G2) or competency validation (G3) has not reached its threshold; give the pilot time before judging outcome and economics."
+        primary = "G2" if not g["G2"]["pass"] else "G3"
+    else:
+        verdict, why = "SCALE", DECISIONS["SCALE"]
+        primary = None
+    levers = [{"id": i, "title": D.INT_INDEX[i]["title"]} for i in GATE_LEVERS.get(primary, [])] if primary else []
+    action = ("Strengthen " + " and ".join(l["title"] for l in levers) + "." if levers else
+              ("Hold spend and entrants at plan until the gate clears; no design change is indicated yet." if verdict == "HOLD" else
+               "Redesign unit costs or the budget mix before scaling." if primary == "G5" else
+               "Ready to recommend scale to the next pilot wave." if verdict == "SCALE" else
+               "Stop and redesign before committing further spend."))
+    return {"verdict": verdict, "reason": why, "primary_gate": primary,
+            "gates": [{"id": x["id"], "name": x["name"], "pass": x["pass"]} for x in sim["gates"]],
+            "levers": levers, "recommended_action": action}
+
+
+BOTTLENECK_STAGES = {"completion": "Completion", "competency": "Competency validation", "uptake": "Transition to apprenticeship/project", "validation": "Workplace validation"}
+
+
+def bottleneck(sim):
+    """Which funnel stage would move VACR the most, per the model's own sensitivity (never manually labelled, RULE 6)."""
+    sens = sensitivity(sim["params"], delta=0.05)
+    rows = [r for r in sens["rows"] if r["key"] in BOTTLENECK_STAGES]
+    top = max(rows, key=lambda r: r["vacr_hi"] - r["vacr_lo"])
+    return {"key": top["key"], "label": BOTTLENECK_STAGES[top["key"]],
+            "swing_pp": round(top["vacr_hi"] - top["vacr_lo"], 2),
+            "statement": f"Improving {BOTTLENECK_STAGES[top['key']].lower()} produces the largest direct improvement in VACR under the current scenario "
+                         f"(±5 pp there moves VACR by {round(top['vacr_hi'] - top['vacr_lo'], 1)} pp, vs less for the other stages)."}
+
+
+# --------------------------------------------------------------------------------------
+# Stress test: apply a named shock to the active scenario and show the cascade
+# --------------------------------------------------------------------------------------
+SHOCKS = [
+    {"id": "completion_down", "label": "Completion -10%", "param": "completion", "rel": -0.10, "kpi_hit": "Fewer learners complete the programme"},
+    {"id": "competency_down", "label": "Competency -10%", "param": "competency", "rel": -0.10, "kpi_hit": "Fewer completers pass independent assessment"},
+    {"id": "employer_down", "label": "Employer participation -15%", "param": "employer_sat", "rel": -0.15, "kpi_hit": "Workplace validation and employer satisfaction fall"},
+    {"id": "cost_up", "label": "Training cost +10%", "param": "cost_mult", "rel": 0.10, "kpi_hit": "Unit costs rise across every budget line"},
+    {"id": "uptake_down", "label": "Apprenticeship uptake -15%", "param": "uptake", "rel": -0.15, "kpi_hit": "Fewer competent learners transition to a workplace"},
+    {"id": "women_conv_down", "label": "Women conversion -10%", "param": "women_rel", "rel": -0.10, "kpi_hit": "Women convert less often relative to men"},
+    {"id": "tier_conv_down", "label": "Tier-2/3 conversion -10%", "param": "tier_rel", "rel": -0.10, "kpi_hit": "Tier-2/3 learners convert less often relative to metros"},
+]
+SHOCK_INDEX = {s["id"]: s for s in SHOCKS}
+
+
+def apply_shock(params, shock_id):
+    s = SHOCK_INDEX.get(shock_id)
+    if not s:
+        return dict(params)
+    p = dict(params)
+    p[s["param"]] = p.get(s["param"], DEFAULT[s["param"]]) * (1 + s["rel"])
+    return p
+
+
+def stress_test(params, shock_id):
+    s = SHOCK_INDEX.get(shock_id)
+    before = simulate(params)
+    if not s:
+        return {"error": "Unknown shock id."}
+    after = simulate(apply_shock(before["params"], shock_id))
+    db, da = decision(before), decision(after)
+    flips = [g["id"] for g in after["gates"] if not g["pass"] and next(x for x in before["gates"] if x["id"] == g["id"])["pass"]]
+    return {"shock": s, "before": {"kpi": before["kpi"], "gates_passed": before["gates_passed"], "decision": db},
+            "after": {"kpi": after["kpi"], "gates_passed": after["gates_passed"], "decision": da},
+            "gate_flips": flips, "vacr_delta": round(after["kpi"]["vacr"] - before["kpi"]["vacr"], 1),
+            "decision_changed": db["verdict"] != da["verdict"]}
+
+
 def signals(sim):
     out = []
     c = sim["consistency"]
