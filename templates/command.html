@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_m.html" import tag, src, cite with context %}
+{% from "_m.html" import tag, src, cite, sr with context %}
 {% block content %}
 {% set k = sim.kpi %}
 <section class="hero">
@@ -30,7 +30,7 @@
   <div class="tile"><div class="l">Verified converts in pilot {{ tag('ass') }}</div><div class="v">{{ '{:,}'.format(sim.verified) }}</div><div class="d">of {{ '{:,}'.format(sim.params.entrants) }} entrants</div></div>
   <div class="tile"><div class="l">Cost per verified convert {{ tag('der') }}</div><div class="v">₹{{ '{:,}'.format(sim.econ.cost_per_convert or 0) }}</div><div class="d"><span class="{{ 'up' if (sim.econ.cost_per_convert or 9e9) <= sim.econ.band else 'down' }}">Band ≤₹{{ '{:,}'.format(sim.econ.band) }}</span></div></div>
   <div class="tile"><div class="l">Break-even, months of earnings {{ tag('der') }}</div><div class="v">{{ sim.econ.months_of_earnings }}</div><div class="d">at ₹24,434/month urban salaried {{ src(['S30']) }}</div></div>
-  <div class="tile"><div class="l">Evidence gates passed</div><div class="v">{{ sim.gates_passed }}<small>/ 6</small></div><div class="d">{% for g in sim.gates %}<span class="chip" style="padding:0 6px"><i style="background:{{ '#2DB757' if g.pass else '#FF4136' }}"></i>{{ g.id }}</span>{% endfor %}</div></div>
+  <div class="tile"><div class="l">Evidence gates passed</div><div class="v">{{ sim.gates_passed }}<small>/ 6</small></div><div class="d">{% for g in sim.gates %}<span class="chip" style="padding:0 6px" title="{{ g.id }} {{ 'pass' if g.pass else 'fail' }}"><i style="background:{{ '#2DB757' if g.pass else '#FF4136' }}"></i>{{ g.id }}{{ sr(' ' + ('Pass' if g.pass else 'Fail')) }}</span>{% endfor %}</div></div>
 </section>
 
 <section class="g g-8-4">

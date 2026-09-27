@@ -9,6 +9,7 @@ import io
 import json
 import os
 import threading
+import time
 import uuid
 from datetime import datetime
 
@@ -28,6 +29,8 @@ _lock = threading.Lock()
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("TOWER_SECRET", "vertex-ai-skill-ladder-3")
 app.config["JSON_SORT_KEYS"] = False
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 
 NAV_GROUPS = [
     ("Overview", [("command", "Command centre", "/")]),
@@ -40,6 +43,61 @@ NAV_GROUPS = [
     ("Evidence", [("sources", "Sources and data", "/sources"), ("brief", "Executive brief", "/brief")]),
 ]
 NAV = [i for _, items in NAV_GROUPS for i in items]
+
+
+def _build_search_index():
+    idx = [{"label": label, "sub": grp, "href": href, "type": "page"} for grp, items in NAV_GROUPS for _, label, href in items]
+    idx += [{"label": f"{i['id']} {i['title']}", "sub": "Intervention", "href": f"/interventions#{i['id']}", "type": "intervention"} for i in D.INTERVENTIONS]
+    idx += [{"label": f"{l['code']} {l['name']}", "sub": "Ladder level", "href": f"/ladder#{l['code']}", "type": "ladder"} for l in D.LADDER]
+    idx += [{"label": f"{g['id']} {g['name']}", "sub": "Evidence gate", "href": "/kpis", "type": "gate"} for g in D.GATES]
+    idx += [{"label": s["name"], "sub": f"State, {s['rate']}% certified of {s['enrolled']:,}", "href": "/states", "type": "state"} for s in D.STATES if s.get("enrolled", 0) > 0]
+    return idx
+
+
+SEARCH_INDEX = _build_search_index()
+
+
+# --------------------------------------------------------------------------------------
+# CSRF: a per-session token, echoed in a meta tag and required as a header on every
+# state-changing /api/ request. Defence in depth alongside the SameSite session cookie.
+# --------------------------------------------------------------------------------------
+def _csrf_token():
+    if "csrf" not in session:
+        session["csrf"] = uuid.uuid4().hex
+    return session["csrf"]
+
+
+@app.before_request
+def _csrf_protect():
+    if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.path.startswith("/api/"):
+        sent = request.headers.get("X-CSRF-Token", "")
+        if not sent or sent != session.get("csrf"):
+            return jsonify({"error": "Your session has expired. Reload the page and try again."}), 403
+
+
+@app.before_request
+def _apply_scenario_from_query():
+    if request.method == "GET" and not request.path.startswith(("/api/", "/static/", "/export/")):
+        sid = request.args.get("scenario")
+        if sid and get_scenario(sid):
+            session["scenario"] = sid
+            session.pop("draft", None)
+
+
+# --------------------------------------------------------------------------------------
+# Simple in-memory rate limiting for /api/ask (per browser session)
+# --------------------------------------------------------------------------------------
+_ask_hits = {}
+_ASK_LIMIT, _ASK_WINDOW = 20, 60
+
+
+def _rate_limited(key, limit=_ASK_LIMIT, window=_ASK_WINDOW):
+    now = time.time()
+    with _lock:
+        hits = [t for t in _ask_hits.get(key, []) if now - t < window]
+        hits.append(now)
+        _ask_hits[key] = hits
+        return len(hits) > limit
 
 
 # --------------------------------------------------------------------------------------
@@ -94,9 +152,13 @@ def _logo():
 
 @app.context_processor
 def inject():
-    return {"NAV_GROUPS": NAV_GROUPS, "NAV": NAV, "active_scenario": active(), "scenarios": all_scenarios(),
+    cid = _cid()
+    scs = all_scenarios()
+    for s in scs:
+        s["owned"] = s["preset"] or not s.get("owner") or s["owner"] == cid
+    return {"NAV_GROUPS": NAV_GROUPS, "NAV": NAV, "active_scenario": active(), "scenarios": scs,
             "now": datetime.now().strftime("%d %b %Y, %H:%M"), "CLASSES": D.CLASSES, "SRC": D.SRC,
-            "LOGO": _logo(), "INTS": D.INTERVENTIONS}
+            "LOGO": _logo(), "INTS": D.INTERVENTIONS, "CSRF": _csrf_token(), "SEARCH_INDEX": SEARCH_INDEX}
 
 
 def page(name, **kw):
@@ -270,7 +332,7 @@ def api_save():
         return jsonify({"error": "Give the scenario a name before saving."}), 400
     sid = "sc-" + uuid.uuid4().hex[:8]
     rec = {"name": name, "note": (b.get("note") or "Saved from simulator")[:160], "params": E.clean(b.get("params")),
-           "created": datetime.now().isoformat(timespec="seconds")}
+           "created": datetime.now().isoformat(timespec="seconds"), "owner": _cid()}
     with _lock:
         st = _load_store()
         st[sid] = rec
@@ -288,6 +350,9 @@ def api_delete(sid):
         st = _load_store()
         if sid not in st:
             return jsonify({"error": "Scenario not found."}), 404
+        owner = st[sid].get("owner")
+        if owner and owner != _cid():
+            return jsonify({"error": "You can only delete scenarios you created on this browser."}), 403
         st.pop(sid)
         _save_store(st)
     if session.get("scenario") == sid:
@@ -383,8 +448,10 @@ def api_ask():
     q = str(b.get("q", "")).strip()[:4000]
     if not q:
         return jsonify({"error": "Type a question first."}), 400
-    sc, sim = active_sim()
     cid = _cid()
+    if _rate_limited(cid):
+        return jsonify({"error": "Too many questions in a short time. Wait a moment and try again."}), 429
+    sc, sim = active_sim()
     if C.get_cfg(cid):
         try:
             return jsonify(C.ask(cid, q, b.get("history") or [], sc["name"], sim))

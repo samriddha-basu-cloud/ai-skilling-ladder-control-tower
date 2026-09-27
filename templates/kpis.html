@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_m.html" import tag, src, cite with context %}
+{% from "_m.html" import tag, src, cite, rag, sr with context %}
 {% block content %}
 <section class="hero">
   <div style="position:relative;z-index:1">
@@ -23,7 +23,7 @@
       <td><b>{{ r.name }}</b></td><td class="small">{{ r.type }}</td><td class="small">{{ r.formula }}</td><td class="small">{{ r.baseline }}</td>
       <td class="num">{{ '≤' if r.cmp == '<=' else '≥' }}{% if r.unit == '₹' %}₹{{ '{:,}'.format(r.target) }}{% else %}{{ r.target }}%{% endif %}</td>
       <td class="num">{% if r.projected is none %}<span class="muted">measured in pilot</span>{% elif r.unit == '₹' %}₹{{ '{:,}'.format(r.projected) }}{% else %}{{ r.projected }}%{% endif %}</td>
-      <td><span class="rag {{ r.status }}" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:{{ {'green':'#2DB757','amber':'#FF6D00','red':'#FF4136','grey':'#C4C4CD'}[r.status] }}"></span></td>
+      <td>{{ rag(r.status, {'green':'On track','amber':'Watch','red':'Off track','grey':'Not measured'}[r.status]) }}</td>
       <td>{{ r.gate or '' }}</td><td class="small">{{ r.kirk }}</td></tr>{% endfor %}</tbody>
   </table></div>
   <p class="small muted" style="padding:0 20px 8px">Inclusion targets are measured at conversion, a stricter test than today's entry data. Skill relevance (novel KPI): refresh or reassess when below 80%.</p>
@@ -60,7 +60,7 @@
 
 <section class="panel">
   <div class="panel-h"><div><h2>Six evidence gates</h2><div class="sub">Scale only if all pass</div></div></div>
-  <div class="g g-3" style="gap:8px">{% for g in sim.gates %}<div class="gate {{ 'pass' if g.pass else 'fail' }}"><div class="gd">{{ g.id }}</div><div><h4>{{ g.name }} <span class="muted small">M{{ g.month }}</span></h4><p>{{ g.detail }}</p></div></div>{% endfor %}</div>
+  <div class="g g-3" style="gap:8px">{% for g in sim.gates %}<div class="gate {{ 'pass' if g.pass else 'fail' }}"><div class="gd">{{ g.id }}{{ sr(' ' + ('Pass' if g.pass else 'Fail')) }}</div><div><h4>{{ g.name }} <span class="muted small">M{{ g.month }}</span></h4><p>{{ g.detail }}</p></div></div>{% endfor %}</div>
 </section>
 {% endblock %}
 
