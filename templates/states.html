@@ -11,7 +11,7 @@
 <section class="g g-7-5">
   <div class="panel">
     <div class="panel-h"><div><h2>State cartogram</h2><div class="sub">Tiles approximate geography. Pilot states outlined. Select a state.</div></div>
-      <div class="actions"><div class="seg" id="metric"><button class="on" data-m="rate">Certification rate</button><button data-m="enrolled">Enrolled</button></div></div></div>
+      <div class="actions"><div class="seg" id="metric"><button class="on" data-m="rate" title="Colour tiles by certification rate">Certification rate</button><button data-m="enrolled" title="Colour tiles by number enrolled">Enrolled</button></div></div></div>
     <div class="tilemap" id="map"></div>
     <div class="scale" id="legend"></div>
     {{ cite(['S01'], 'Rates derived from the state table (sum 13,90,145 ÷ 23,85,414 = 58.3%)', 'FSP_State_Data') }}
@@ -21,13 +21,13 @@
     <div class="panel-h" style="padding:20px 20px 0"><div><h2>All states and UTs</h2><div class="sub">Click a column to sort</div></div></div>
     <div class="tbl-wrap" style="max-height:620px;overflow:auto"><table class="tbl" id="stTbl">
       <thead><tr><th class="sortable">State</th><th class="sortable num">Enrolled</th><th class="sortable num">Certified</th><th class="sortable num">Rate %</th><th class="sortable">3.0 pilot role</th><th class="sortable">Workbook 2.0</th></tr></thead>
-      <tbody>{% for s in states|sort(attribute='enrolled', reverse=True) %}<tr data-code="{{ s.code }}" style="cursor:pointer"><td>{{ s.name }}</td><td class="num" data-v="{{ s.enrolled }}">{{ '{:,}'.format(s.enrolled) }}</td><td class="num" data-v="{{ s.certified }}">{{ '{:,}'.format(s.certified) }}</td><td class="num" data-v="{{ s.rate }}">{{ s.rate }}</td><td>{% if s.pilot %}<span class="chip" style="background:#FFE600;color:#1A1A24;border-color:#FFE600">{{ s.pilot }}</span>{% endif %}</td><td class="small">{{ s.pilot_wb or '' }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% for s in states|sort(attribute='enrolled', reverse=True) %}<tr data-code="{{ s.code }}" style="cursor:pointer" title="Click for {{ s.name }}'s detail"><td>{{ s.name }}</td><td class="num" data-v="{{ s.enrolled }}">{{ '{:,}'.format(s.enrolled) }}</td><td class="num" data-v="{{ s.certified }}">{{ '{:,}'.format(s.certified) }}</td><td class="num" data-v="{{ s.rate }}">{{ s.rate }}</td><td>{% if s.pilot %}<span class="chip" style="background:#FFE600;color:#1A1A24;border-color:#FFE600">{{ s.pilot }}</span>{% endif %}</td><td class="small">{{ s.pilot_wb or '' }}</td></tr>{% endfor %}</tbody>
     </table></div>
   </div>
 </section>
 <section class="panel">
   <div class="panel-h"><div><h2>Enrolled vs certified, top 15 states</h2><div class="sub">Change the ordering and watch the bars move {{ tag('obs') }}</div></div>
-    <div class="actions"><div class="seg" id="ord"><button class="on" data-o="enrolled">By enrolled</button><button data-o="certified">By certified</button><button data-o="rate">By rate</button><button data-o="gap">By uncertified</button></div></div></div>
+    <div class="actions"><div class="seg" id="ord"><button class="on" data-o="enrolled" title="Rank top 15 states by number enrolled">By enrolled</button><button data-o="certified" title="Rank top 15 states by number certified">By certified</button><button data-o="rate" title="Rank by certification rate (20k+ enrolled only)">By rate</button><button data-o="gap" title="Rank by enrolled minus certified, the uncertified gap">By uncertified</button></div></div></div>
   <div class="chart h-420"><canvas id="stackChart"></canvas></div>
   {{ cite(['S01'], '', 'FSP_State_Data') }}
 </section>

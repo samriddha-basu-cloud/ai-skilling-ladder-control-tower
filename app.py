@@ -1,5 +1,5 @@
 """
-AI Skill Ladder 3.0 Control Tower
+AI Skill Ladder Control Tower
 EY Young Leaders 2026, Final Round (Team Vertex)
 
 Run:  pip install -r requirements.txt  &&  python app.py   ->  http://127.0.0.1:5000
@@ -34,7 +34,8 @@ NAV_GROUPS = [
     ("Diagnose", [("framing", "Problem framing", "/framing"), ("exposure", "Job exposure lab", "/exposure"), ("matrix", "Diagnosis matrix", "/matrix")]),
     ("Design", [("ladder", "Skill ladder", "/ladder"), ("interventions", "Seven interventions", "/interventions"),
                 ("operating", "Operating model", "/operating"), ("value", "Long-term value", "/value")]),
-    ("Decide", [("strategy", "Strategy lab", "/strategy"), ("simulator", "Pilot simulator", "/simulator"), ("states", "State view", "/states")]),
+    ("Decide", [("strategy", "Strategy lab", "/strategy"), ("simulator", "Pilot simulator", "/simulator"), ("states", "State view", "/states"),
+                ("scenarios", "Scenario guide", "/scenarios")]),
     ("Deliver", [("roadmap", "Roadmap and risks", "/roadmap"), ("kpis", "KPIs and gates", "/kpis")]),
     ("Engage", [("navigator", "Pathway navigator", "/navigator"), ("ask", "Ask the Tower", "/ask")]),
     ("Evidence", [("sources", "Sources and data", "/sources"), ("brief", "Executive brief", "/brief")]),
@@ -183,6 +184,15 @@ def states():
     return page("states", states=D.STATES, nat=D.FSP_STATE_TOTAL)
 
 
+@app.route("/scenarios")
+def scenarios():
+    rows = []
+    for pid, pr in E.PRESETS.items():
+        sim = E.simulate(pr["params"])
+        rows.append({"id": pid, "name": pr["name"], "note": pr["note"], "sim": sim, **E.SCENARIO_EXPLAINERS[pid]})
+    return page("scenarios", rows=rows)
+
+
 @app.route("/roadmap")
 def roadmap():
     sc, sim = active_sim()
@@ -318,7 +328,8 @@ def api_state(code):
 
 @app.post("/api/pathway")
 def api_pathway():
-    return jsonify(P.navigate(_body()))
+    _, sim = active_sim()
+    return jsonify(P.navigate(_body(), cost_per_entrant=sim["econ"]["cost_per_entrant"]))
 
 
 @app.post("/api/exposure")

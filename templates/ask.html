@@ -3,7 +3,7 @@
 <section class="g g-8-4">
   <div class="panel beam-top" style="display:flex;flex-direction:column;min-height:70vh">
     <div class="panel-h">
-      <div><h2>Ask the Tower</h2><div class="sub">Strategy analyst for AI Skill Ladder 3.0. With a key it reasons with Claude and runs the tower's live model; without one it answers from the built-in rules engine.</div></div>
+      <div><h2>Ask the Tower</h2><div class="sub">Strategy analyst for AI Skill Ladder. With a key it reasons with Claude and runs the tower's live model; without one it answers from the built-in rules engine.</div></div>
       <div class="actions">
         <span class="chip" id="modeChip"><i style="background:{{ '#2DB757' if cstat.connected else '#FFE600' }}"></i>{{ 'Claude connected' if cstat.connected else 'Rules engine' }}</span>
         <button class="btn ghost" id="newChat" type="button">New chat</button>
@@ -15,7 +15,7 @@
       <button class="btn primary" type="submit" id="sendBtn" style="height:48px">Ask</button>
     </form>
     <div class="sugg mt-12" id="sugg">
-      {% for s in ["Summarise AI Skill Ladder 3.0 in 60 seconds for the panel", "Why is VACR 40% hard at the target floors?", "Probability the pilot passes all gates?", "Why Bihar and Assam in the pilot?", "Grill me like an EY partner on the ₹290 Cr pilot", "What if completion is only 65%?", "How does the plan map to the SDGs?", "Place a 45-year-old bank clerk in Lucknow on the ladder"] %}
+      {% for s in ["Summarise AI Skill Ladder in 60 seconds for the panel", "Why is VACR 40% hard at the target floors?", "Probability the pilot passes all gates?", "Why Bihar and Assam in the pilot?", "Grill me like an EY partner on the ₹290 Cr pilot", "What if completion is only 65%?", "How does the plan map to the SDGs?", "Place a 45-year-old bank clerk in Lucknow on the ladder"] %}
       <button type="button">{{ s }}</button>
       {% endfor %}
     </div>
@@ -101,7 +101,7 @@ function bubble(role, text, meta) {
 
 function renderHistory() {
   chat.innerHTML = "";
-  if (!HISTORY.length) bubble("assistant", "Ask me anything about AI Skill Ladder 3.0: the case, the L0 to L5 ladder, the seven interventions, VACR and the six gates, the ₹290 Cr pilot, a state, or how to answer a tough panel question.", null);
+  if (!HISTORY.length) bubble("assistant", "Ask me anything about AI Skill Ladder: the case, the L0 to L5 ladder, the seven interventions, VACR and the six gates, the ₹290 Cr pilot, a state, or how to answer a tough panel question.", null);
   HISTORY.forEach(h => bubble(h.role, h.content, h.meta));
 }
 

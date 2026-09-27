@@ -4,26 +4,26 @@
   <form class="panel" id="navForm" style="align-self:start" novalidate>
     <div class="panel-h"><div><h2>Learner profile</h2><div class="sub">How a citizen, counsellor or employer would use the L0 to L5 ladder on SIDH (illustrative placement rules)</div></div></div>
     <div class="g g-2" style="gap:12px">
-      <div class="form-row span-2"><label for="age">Age</label><input class="input" type="number" id="age" min="14" max="75" value="44"></div>
-            <div class="form-row span-2"><label for="education">Education</label>
-        <select class="input" id="education">{% for k, v in education.items() %}<option value="{{ k }}" {% if k == 'ug_nontech' %}selected{% endif %}>{{ v[0] }}</option>{% endfor %}</select></div>
-      <div class="form-row span-2"><label for="occupation">Occupation</label>
-        <select class="input" id="occupation">{% for k, v in occupation.items() %}<option value="{{ k }}" {% if k == 'non_it_pro' %}selected{% endif %}>{{ v.label }}</option>{% endfor %}</select></div>
-      <div class="form-row"><label for="state">State</label>
-        <select class="input" id="state">{% for s in states %}<option value="{{ s.code }}" {% if s.code == 'MH' %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
-      <div class="form-row"><label for="language">Learning language</label>
-        <select class="input" id="language">{% for l in languages %}<option {% if l == 'Marathi' %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+      <div class="form-row span-2"><label for="age" title="Used to place mid-career vs youth AI Skill Credit bands">Age</label><input class="input" type="number" id="age" min="14" max="75" value="44" title="Enter an age between 14 and 75"></div>
+            <div class="form-row span-2"><label for="education" title="Combines with occupation to set the suggested target level">Education</label>
+        <select class="input" id="education" title="Highest qualification completed">{% for k, v in education.items() %}<option value="{{ k }}" {% if k == 'ug_nontech' %}selected{% endif %}>{{ v[0] }}</option>{% endfor %}</select></div>
+      <div class="form-row span-2"><label for="occupation" title="Drives the default target level on the ladder">Occupation</label>
+        <select class="input" id="occupation" title="Closest match to current role">{% for k, v in occupation.items() %}<option value="{{ k }}" {% if k == 'non_it_pro' %}selected{% endif %}>{{ v.label }}</option>{% endfor %}</select></div>
+      <div class="form-row"><label for="state" title="Adds the state's FSP certification context to the plan">State</label>
+        <select class="input" id="state" title="State the learner is based in">{% for s in states %}<option value="{{ s.code }}" {% if s.code == 'MH' %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select></div>
+      <div class="form-row"><label for="language" title="Adds a vernacular/BHASHINI top-up when not English">Learning language</label>
+        <select class="input" id="language" title="Preferred language for learning content">{% for l in languages %}<option {% if l == 'Marathi' %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
     </div>
-    <h3 class="mt-16" style="font-size:13px">Self-assessment</h3>
+    <h3 class="mt-16" style="font-size:13px" title="Five questions that place the learner on the L0 to L5 ladder today">Self-assessment</h3>
     {% for q in questions %}
     <div class="q">
       <p id="{{ q.id }}-l">{{ q.text }}</p>
       <div class="seg" role="radiogroup" aria-labelledby="{{ q.id }}-l" data-q="{{ q.id }}">
-        {% for o in q.options %}<button type="button" role="radio" data-v="{{ loop.index0 }}" class="{{ 'on' if (loop.index0 == 1 and q.id in ['q1','q2']) or (loop.index0 == 0 and q.id not in ['q1','q3']) else '' }}" aria-checked="false">{{ o }}</button>{% endfor %}
+        {% for o in q.options %}<button type="button" role="radio" data-v="{{ loop.index0 }}" class="{{ 'on' if (loop.index0 == 1 and q.id in ['q1','q2']) or (loop.index0 == 0 and q.id not in ['q1','q3']) else '' }}" aria-checked="false" title="{{ o }}">{{ o }}</button>{% endfor %}
       </div>
     </div>
     {% endfor %}
-    <button class="btn primary mt-16" type="submit" style="width:100%;justify-content:center">Build my ladder plan</button>
+    <button class="btn primary mt-16" type="submit" style="width:100%;justify-content:center" title="Recompute the plan from the profile and answers above">Build my ladder plan</button>
   </form>
 
   <div class="g" style="align-content:start" id="navOut" aria-live="polite">
@@ -39,31 +39,67 @@ function answers() {
   document.querySelectorAll(".seg[data-q]").forEach(g => { const on = g.querySelector("button.on"); a[g.dataset.q] = on ? +on.dataset.v : 0; });
   return a;
 }
+let LAST_R = null;
+function timelineBar(r) {
+  const total = r.weeks || 1;
+  return `<div class="g" style="gap:4px">${r.steps.map(s => {
+    const w = Math.max(2, (s.weeks / total) * 100);
+    return `<div class="row" style="gap:8px" title="${s.name}: week ${s.start_week} to ${s.end_week}">
+      <span class="small muted" style="width:32px;flex:none">${s.code}</span>
+      <div class="hbar" style="flex:1"><i style="left:${s.start_week / total * 100}%;width:${w}%;background:${s.color}"></i></div>
+      <span class="small muted" style="width:78px;flex:none;text-align:right">≈${s.weeks}w</span>
+    </div>`;
+  }).join("")}</div>`;
+}
 function render(r) {
+  LAST_R = r;
   navOut.innerHTML = `
     <section class="hero" style="grid-template-columns:1fr">
       <div style="position:relative;z-index:1">
         <div class="small" style="color:#A0A0AE">${r.profile.occupation}, ${r.profile.age} | ${r.profile.education} | ${r.profile.state} | learning in ${r.profile.language}</div>
         <div class="row mt-12" style="gap:16px;flex-wrap:wrap">
-          <div><div class="small" style="color:#A0A0AE">Stands today</div><div class="chip" style="background:${r.current.color};color:${r.current.ink};border-color:${r.current.color};font-size:15px;padding:6px 12px">${r.current.code} ${r.current.name}</div></div>
+          <div><div class="small" style="color:#A0A0AE">Stands today</div><div class="chip" style="background:${r.current.color};color:${r.current.ink};border-color:${r.current.color};font-size:15px;padding:6px 12px" title="Placed from the self-assessment answers below">${r.current.code} ${r.current.name}</div></div>
           <div style="font-size:22px;color:#FFE600">→</div>
-          <div><div class="small" style="color:#A0A0AE">Target level</div><div class="chip" style="background:${r.target.color};color:${r.target.ink};border-color:${r.target.color};font-size:15px;padding:6px 12px">${r.target.code} ${r.target.name}</div></div>
+          <div><div class="small" style="color:#A0A0AE">Target level</div><div class="chip" style="background:${r.target.color};color:${r.target.ink};border-color:${r.target.color};font-size:15px;padding:6px 12px" title="Suggested by occupation and education, never below one level above where they stand today">${r.target.code} ${r.target.name}</div></div>
         </div>
       </div>
     </section>
-    <div class="g g-3">
-      <div class="tile"><div class="l">Self-assessment</div><div class="v">${r.score}<small>/10</small></div></div>
-      <div class="tile"><div class="l">Time to target</div><div class="v">${r.weeks}<small> weeks</small></div><div class="d">indicative</div></div>
-      <div class="tile"><div class="l">AI Skill Credit</div><div class="v" style="font-size:20px">${r.credit ? r.credit[1] : "Not eligible"}</div><div class="d">${r.credit ? r.credit[0] + " (proposed)" : ""}</div></div>
+    <div class="panel">
+      <div class="panel-h"><div><h2>Pace</h2><div class="sub">Same pathway, different weekly time commitment</div></div></div>
+      <div class="seg" id="paceSeg" role="radiogroup" aria-label="Learning pace">${Object.entries(r.pace_options).map(([k, v]) => `<button type="button" data-pace="${k}" class="${k === r.pace ? "on" : ""}" title="${v.note}">${v.label}</button>`).join("")}</div>
+    </div>
+    <div class="g g-4">
+      <div class="tile" title="Total points across the five self-assessment questions"><div class="l">Self-assessment</div><div class="v">${r.score}<small>/10</small></div></div>
+      <div class="tile" title="Sum of indicative durations for each remaining step, at the selected pace"><div class="l">Time to target</div><div class="v">${r.weeks}<small> weeks</small></div><div class="d">${r.pace_options[r.pace].label.toLowerCase()} pace</div></div>
+      <div class="tile" title="Calendar month this learner reaches the target level at the selected pace"><div class="l">Target date</div><div class="v" style="font-size:22px">${r.eta || "–"}</div><div class="d">indicative</div></div>
+      <div class="tile" title="Proposed subsidy band; see Cost below for the net estimate"><div class="l">AI Skill Credit</div><div class="v" style="font-size:20px">${r.credit ? r.credit[1] : "Not eligible"}</div><div class="d">${r.credit ? r.credit[0] + " (proposed)" : ""}</div></div>
+    </div>
+    ${r.risk ? `<div class="alert amber"><span class="stripe"></span><div><h4>${r.risk.level}</h4><p>${r.risk.drivers.join("; ")}. <b>Suggested:</b> ${r.risk.mitigation}.</p></div></div>` : ""}
+    <div class="g g-2">
+      <div class="panel"><div class="panel-h"><div><h2>Pathway timeline</h2><div class="sub">Cumulative weeks from today to target, at ${r.pace_options[r.pace].label.toLowerCase()} pace</div></div></div>${timelineBar(r)}</div>
+      <div class="panel"><div class="panel-h"><div><h2>Estimated cost</h2><div class="sub" title="Scaled from the pilot's cost per entrant by the share of the full L0 to L5 journey this plan covers">Illustrative, from pilot unit economics</div></div></div>
+        ${r.cost ? `<div class="kv">
+          <dt title="Full programme cost across all channels for this many weeks of the ladder">Programme cost</dt><dd>₹${r.cost.programme.toLocaleString("en-IN")}</dd>
+          <dt title="Proposed AI Skill Credit subsidy for this learner's band">AI Skill Credit</dt><dd>-₹${r.cost.credit.toLocaleString("en-IN")}</dd>
+          <dt><b>Net cost to learner</b></dt><dd><b>₹${r.cost.net.toLocaleString("en-IN")}</b></dd>
+        </div>` : '<p class="muted small">Cost estimate unavailable for this scenario.</p>'}</div>
     </div>
     <div class="panel"><div class="panel-h"><div><h2>Pathway</h2><div class="sub">Each step ends in evidence written to the AI Skill Passport</div></div></div>
       <div class="g" style="gap:8px">${r.steps.map(s => `<div style="display:grid;grid-template-columns:56px 1fr;border-radius:8px;overflow:hidden;background:var(--panel-2)"><div style="display:grid;place-items:center;font-weight:800;background:${s.color};color:${s.ink}">${s.code}</div>
-        <div style="padding:10px 12px"><b>${s.name}</b> <span class="muted small">≈${s.weeks} weeks</span><p class="small mt-8">${s.how}</p><p class="small"><b>Proof:</b> ${s.proof}</p><div class="pill-row mt-8">${s.channels.map(c => `<span class="chip">${c}</span>`).join("")}</div></div></div>`).join("") || '<p class="muted small">Already at the top level: focus on refresh and mentoring.</p>'}</div></div>
+        <div style="padding:10px 12px"><b>${s.name}</b> <span class="muted small">≈${s.weeks} weeks, week ${s.start_week} to ${s.end_week}</span><p class="small mt-8">${s.how}</p><p class="small"><b>Proof:</b> ${s.proof}</p><div class="pill-row mt-8">${s.channels.map(c => `<span class="chip">${c}</span>`).join("")}</div></div></div>`).join("") || '<p class="muted small">Already at the top level: focus on refresh and mentoring.</p>'}</div></div>
     <div class="g g-2">
       <div class="panel"><div class="panel-h"><div><h2>Support and top-ups</h2></div></div><div class="alerts">${r.topups.map(t => `<div class="alert green"><span class="stripe"></span><div><p>${t}</p></div></div>`).join("") || '<p class="muted small">Standard ladder access applies.</p>'}</div>
-        ${r.state_ctx ? `<p class="small muted mt-12">${r.state_ctx.name}: FSP certification rate ${r.state_ctx.rate}%${r.state_ctx.pilot ? `; pilot state (${r.state_ctx.pilot})` : ""}.</p>` : ""}</div>
+        ${r.state_ctx ? `<p class="small muted mt-12" title="From the FSP state data used across this tower">${r.state_ctx.name}: FSP certification rate ${r.state_ctx.rate}%${r.state_ctx.pilot ? `; pilot state (${r.state_ctx.pilot})` : ""}.</p>` : ""}</div>
       <div class="panel"><div class="panel-h"><div><h2>Passport record</h2></div></div><ul class="small" style="margin:0;padding-left:18px;display:grid;gap:4px">${r.passport.map(p => `<li>${p}</li>`).join("")}</ul><p class="small muted mt-12">${r.note}</p></div>
     </div>`;
+  document.querySelectorAll("#paceSeg button").forEach(b => b.addEventListener("click", async () => {
+    if (b.classList.contains("on")) return;
+    try { render(await Tower.api("/api/pathway", { ...lastBody(), pace: b.dataset.pace })); }
+    catch (err) { Tower.toast(err.message); }
+  }));
+}
+function lastBody() {
+  return { age: +age.value, education: education.value, occupation: occupation.value, state: state.value, language: language.value, answers: answers(), pace: LAST_R ? LAST_R.pace : "standard" };
 }
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".seg[data-q] button").forEach(b => b.addEventListener("click", () => { b.parentNode.querySelectorAll("button").forEach(x => { x.classList.remove("on"); x.setAttribute("aria-checked", "false"); }); b.classList.add("on"); b.setAttribute("aria-checked", "true"); }));
