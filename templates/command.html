@@ -25,6 +25,20 @@
   </div>
 </section>
 
+{% set d = decision %}
+<section class="panel beam-top">
+  <div class="panel-h"><div><h2>Decision</h2><div class="sub">Deterministic call from the six evidence gates, not an opaque model</div></div>
+    <div class="actions"><a class="btn" href="/kpis">Open KPI scorecard</a><a class="btn ghost" href="/stress">Stress test it</a></div></div>
+  <div class="decision-panel">
+    <div class="decision-badge {{ d.verdict }}">{{ d.verdict }}</div>
+    <div class="decision-why">
+      <p>{{ d.reason }}</p>
+      <div class="action">{{ d.recommended_action }}</div>
+      <p class="small muted mt-8">Primary bottleneck: {{ bottleneck.statement }}</p>
+    </div>
+  </div>
+</section>
+
 <section class="g g-5">
   <div class="tile"><div class="l">VACR, active scenario {{ tag('tgt') }}</div><div class="v">{{ k.vacr }}<small>%</small></div><div class="d"><span class="{{ 'up' if k.vacr >= 40 else 'down' }}">Target ≥40%</span> {{ active_scenario.name }}</div></div>
   <div class="tile"><div class="l">Verified converts in pilot {{ tag('ass') }}</div><div class="v">{{ '{:,}'.format(sim.verified) }}</div><div class="d">of {{ '{:,}'.format(sim.params.entrants) }} entrants</div></div>

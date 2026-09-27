@@ -663,6 +663,27 @@ kbd { display: inline-block; padding: 1px 7px; border-radius: 4px; border: 1px s
 input[type=range].driven { accent-color: #FF6D00; }
 @media (max-width: 900px) { .demo-bar { grid-template-columns: 1fr; } .demo-stage { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .funnel-row .bar, .hbar > i, .gate .gd { transition: none; } }
+
+/* ---------- Decision engine + stress test ---------- */
+.decision-panel { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+.decision-badge { font-size: 20px; font-weight: 800; padding: 12px 20px; border-radius: 10px; text-align: center; color: #fff; letter-spacing: .02em; }
+.decision-badge.SCALE { background: var(--green); }
+.decision-badge.HOLD { background: var(--blue, #188CE5); }
+.decision-badge.REDESIGN { background: #FF6D00; }
+.decision-badge.STOP { background: var(--red); }
+.decision-why p { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+.decision-why .action { font-weight: 700; margin-top: 8px; font-size: 13px; }
+.shock-list { display: grid; gap: 8px; }
+.shock-btn { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line-soft); cursor: pointer; text-align: left; font: inherit; color: var(--text); }
+.shock-btn:hover, .shock-btn.on { border-color: var(--red); }
+.shock-btn .lbl { font-weight: 700; font-size: 13px; }
+.shock-btn .hit { font-size: 11.5px; color: var(--text-3); }
+.cascade { display: grid; gap: 10px; }
+.cascade-step { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+.cascade-step .arrow { color: var(--text-3); font-weight: 800; text-align: center; }
+.cascade-step .body { background: var(--panel-2); border-radius: 8px; padding: 10px 12px; }
+.cascade-step .body b { font-size: 13.5px; }
+.cascade-step .body p { font-size: 12.5px; color: var(--text-2); margin-top: 2px; }
 .demo-stage.float { position: fixed; left: 272px; right: 24px; bottom: 16px; z-index: 40; box-shadow: 0 12px 40px rgba(0,0,0,.45); border: 1px solid #FFE600; }
 body.nav-collapsed .demo-stage.float { left: 96px; }
 body.demo-on .main { padding-bottom: 140px; }
