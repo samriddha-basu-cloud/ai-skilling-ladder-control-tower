@@ -1,5 +1,5 @@
 """
-Reference data for the AI Skill Ladder 3.0 Control Tower (Team Vertex, EY Young Leaders 2026).
+Reference data for the AI Skill Ladder Control Tower (Team Vertex, EY Young Leaders 2026).
 
 Data discipline (from the team's evidence workbook):
   Observed         published statistic from an official / primary source

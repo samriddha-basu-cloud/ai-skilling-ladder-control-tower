@@ -1,5 +1,13 @@
 """Learner Pathway Navigator on the L0-L5 AI Skill Ladder (illustrative placement rules; team design)."""
+from datetime import date, timedelta
+
 from . import data as D
+
+PACE = {
+    "standard": (1.0, "Standard", "Blended with work or study, a few hours a week"),
+    "accelerated": (0.65, "Accelerated", "Near full-time intensity, fastest route to target"),
+    "extended": (1.5, "Extended", "Part-time evenings and weekends, lighter weekly load"),
+}
 
 EDUCATION = {
     "none": ("Primary schooling or less", 0), "school": ("School (Class 6 to 12)", 1), "iti": ("ITI / Diploma / Polytechnic", 1),
@@ -30,6 +38,7 @@ STEP = {
     4: {"weeks": 48, "how": "9-12-month specialist track with academia or employer CoE; IndiaAI compute", "proof": "Production system or published work"},
     5: {"weeks": 12, "how": "Council-accredited leadership programme; governance case", "proof": "Peer or board review"},
 }
+FULL_LADDER_WEEKS = sum(s["weeks"] for s in STEP.values())
 
 
 def _current(answers):
@@ -48,12 +57,13 @@ def _current(answers):
     return lvl, sum(a)
 
 
-def navigate(payload):
+def navigate(payload, cost_per_entrant=None):
     age = int(payload.get("age", 30) or 30)
     edu = payload.get("education", "ug_nontech")
     occ = payload.get("occupation", "non_it_pro")
     state = (payload.get("state") or "MH").upper()
     lang = payload.get("language", "English")
+    pace = payload.get("pace") if payload.get("pace") in PACE else "standard"
     answers = payload.get("answers", {}) or {}
     cur, score = _current(answers)
     target = OCCUPATION.get(occ, OCCUPATION["non_it_pro"])["target"]
@@ -62,19 +72,43 @@ def navigate(payload):
     if edu == "phd":
         target = max(target, 4)
     target = max(target, min(cur + 1, 5)) if cur < 5 else 5
-    steps = []
+
+    base_steps = []
     for lvl in range(cur + 1 if cur < target else cur, target + 1):
         L = D.LADDER[lvl]
-        steps.append({"code": L["code"], "name": L["name"], "what": L["what"], "color": L["color"], "ink": L["ink"],
-                      **STEP[lvl], "channels": L["channels"]})
+        base_steps.append({"code": L["code"], "name": L["name"], "what": L["what"], "color": L["color"], "ink": L["ink"],
+                            **STEP[lvl], "channels": L["channels"]})
+    base_weeks = sum(s["weeks"] for s in base_steps)
+
+    mult = PACE[pace][0]
+    steps = []
+    cursor = 0
+    for s in base_steps:
+        wk = max(1, round(s["weeks"] * mult))
+        steps.append({**s, "weeks": wk, "start_week": cursor, "end_week": cursor + wk})
+        cursor += wk
     weeks = sum(s["weeks"] for s in steps)
+    eta = (date.today() + timedelta(weeks=weeks)).strftime("%b %Y") if weeks else None
+    pace_options = {}
+    for key, (m, label, note) in PACE.items():
+        w = sum(max(1, round(s["weeks"] * m)) for s in base_steps)
+        pace_options[key] = {"label": label, "note": note, "weeks": w,
+                              "eta": (date.today() + timedelta(weeks=w)).strftime("%b %Y") if w else None}
+
     credit = None
     if age >= 40 and target >= 2:
-        credit = ("Mid-career band", "₹15,000-25,000")
+        credit = ("Mid-career band", "₹15,000-25,000", 20000)
     elif occ in ("student", "iti_grad") or age < 25:
-        credit = ("Youth band", "₹2,000-3,000")
+        credit = ("Youth band", "₹2,000-3,000", 2500)
     elif target >= 2:
-        credit = ("Professional band", "₹5,000-10,000")
+        credit = ("Professional band", "₹5,000-10,000", 7500)
+
+    cost = None
+    if cost_per_entrant and weeks:
+        programme_cost = round(cost_per_entrant * weeks / FULL_LADDER_WEEKS)
+        credit_value = credit[2] if credit else 0
+        cost = {"programme": programme_cost, "credit": credit_value, "net": max(0, programme_cost - credit_value)}
+
     topups = []
     if occ == "returner":
         topups.append("Priority top-up and a women-led or returner cohort with flexible timing")
@@ -88,13 +122,32 @@ def navigate(payload):
         topups.append("Eligible for the National AI Trainer Corps after L2")
     if occ == "msme":
         topups.append("Bring a real business problem to the hub's MSME challenge fund")
+
     st = next((s for s in D.STATES if s["code"] == state), None)
+
+    risk = None
+    if cur == 0 and (age >= 45 or occ in ("farmer", "gig") or lang != "English"):
+        drivers = []
+        if age >= 45:
+            drivers.append("age band with lower historical digital-learning completion")
+        if occ in ("farmer", "gig"):
+            drivers.append("informal-work cohort, harder to reach with standard delivery")
+        if lang != "English":
+            drivers.append(f"{lang}-first learner; needs vernacular content from day one")
+        risk = {"level": "Elevated first-mile drop-off risk", "drivers": drivers,
+                "mitigation": "Route through an assisted CSC or hub with vernacular support rather than self-serve online"}
+    elif st and isinstance(st.get("rate"), (int, float)) and st["rate"] < 50 and target >= 2:
+        risk = {"level": f"{st['name']} certifies below the national pace ({st['rate']}%)",
+                "drivers": ["State-level FSP certification rate is on the lower half"],
+                "mitigation": "Build in the buffer months shown above rather than the standard timeline"}
+
     return {
         "profile": {"age": age, "education": EDUCATION.get(edu, EDUCATION["ug_nontech"])[0], "occupation": OCCUPATION.get(occ, OCCUPATION["non_it_pro"])["label"],
                     "state": st["name"] if st else state, "language": lang},
         "score": score, "current": {k: D.LADDER[cur][k] for k in ("code", "name", "color", "ink")},
         "target": {k: D.LADDER[target][k] for k in ("code", "name", "color", "ink")},
-        "steps": steps, "weeks": weeks, "credit": credit, "topups": topups,
+        "steps": steps, "weeks": weeks, "eta": eta, "pace": pace, "pace_options": pace_options,
+        "credit": credit, "cost": cost, "risk": risk, "topups": topups,
         "passport": [f"{s['code']}: {s['proof']}" for s in steps] + ["Outcome recorded at 6 and 12 months", "Reassess every 24 months at L2+"],
         "state_ctx": {"name": st["name"], "rate": st["rate"], "pilot": st["pilot"]} if st else None,
         "note": "Illustrative placement rules (team design); a certified assessor makes the real placement.",

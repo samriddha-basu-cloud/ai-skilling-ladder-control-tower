@@ -178,7 +178,7 @@ def run_tool(name, inp, active):
     return {"error": f"Unknown tool {name}"}
 
 
-SYSTEM = """You are "Ask the Tower", the senior analyst inside the AI Skill Ladder 3.0 Control Tower built by Team Vertex (EY Young Leaders 2026 final round) for the Government of India.
+SYSTEM = """You are "Ask the Tower", the senior analyst inside the AI Skill Ladder Control Tower built by Team Vertex (EY Young Leaders 2026 final round) for the Government of India.
 
 Rules:
 - Answer anything about the case, India's AI-skilling landscape, the L0-L5 ladder, the seven interventions (I1-I7), VACR and the six gates, the ₹290 Cr pilot and ₹6,500 Cr envelope, states, benchmarks, risks, SDGs, the deck and panel questions.

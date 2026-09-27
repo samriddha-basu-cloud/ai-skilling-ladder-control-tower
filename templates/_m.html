@@ -1,3 +1,10 @@
-{% macro tag(c) -%}{% set t = CLASSES[c] %}<span class="dtag" style="background:{{ t[1] }};color:{{ t[2] }}">{{ t[0] }}</span>{%- endmacro %}
+{% set TAG_HELP = {
+  'obs': 'A published statistic from an official or primary source',
+  'der': 'Calculated by the team from Observed figures, using a stated formula',
+  'ben': 'Evidence from an international programme or peer-reviewed research',
+  'ass': 'Created by the team for the case; not a Government of India allocation',
+  'tgt': 'A future target proposed by the team, not yet achieved',
+} %}
+{% macro tag(c) -%}{% set t = CLASSES[c] %}<span class="dtag" style="background:{{ t[1] }};color:{{ t[2] }}" title="{{ TAG_HELP.get(c, t[0]) }}">{{ t[0] }}</span>{%- endmacro %}
 {% macro src(ids) -%}{% for i in ids %}<a class="srcref" href="/sources#{{ i }}" title="{{ SRC[i].pub if i in SRC else '' }}: {{ SRC[i].title if i in SRC else '' }}">{{ i }}</a>{% endfor %}{%- endmacro %}
 {% macro cite(ids, note='', dv=None) -%}<div class="cite"><span class="cl">Source</span>{% for i in ids %}{% if i in SRC %}<a href="/sources#{{ i }}" title="{{ SRC[i].title }}">{{ i }}</a> {{ SRC[i].pub }}, {{ SRC[i].date }}{% if not loop.last %}; {% endif %}{% endif %}{% endfor %}{% if dv %} <span class="dvref">Workbook {{ dv }}</span>{% endif %}{% if note %}{% if ids or dv %}. {% endif %}{{ note }}{% endif %}</div>{%- endmacro %}
