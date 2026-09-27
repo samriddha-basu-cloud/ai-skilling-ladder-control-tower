@@ -18,10 +18,10 @@
     <p class="small muted mt-12">"Others" in the PIB table ({{ '{:,}'.format(nat.others[0]) }} enrolled) is not mapped. Emphasis in the drawer is a team rule of thumb {{ tag('ass') }}</p>
   </div>
   <div class="panel flush">
-    <div class="panel-h" style="padding:20px 20px 0"><div><h2>All states and UTs</h2><div class="sub">Click a column to sort</div></div></div>
+    <div class="panel-h" style="padding:20px 20px 0"><div><h2>All states and UTs</h2><div class="sub">Click a column to sort</div></div><div class="actions no-print" style="padding-right:20px"><button class="btn ghost" id="expStates" type="button">Export CSV</button></div></div>
     <div class="tbl-wrap" style="max-height:620px;overflow:auto"><table class="tbl" id="stTbl">
       <thead><tr><th class="sortable">State</th><th class="sortable num">Enrolled</th><th class="sortable num">Certified</th><th class="sortable num">Rate %</th><th class="sortable">3.0 pilot role</th><th class="sortable">Workbook 2.0</th></tr></thead>
-      <tbody>{% for s in states|sort(attribute='enrolled', reverse=True) %}<tr data-code="{{ s.code }}" style="cursor:pointer"><td>{{ s.name }}</td><td class="num" data-v="{{ s.enrolled }}">{{ '{:,}'.format(s.enrolled) }}</td><td class="num" data-v="{{ s.certified }}">{{ '{:,}'.format(s.certified) }}</td><td class="num" data-v="{{ s.rate }}">{{ s.rate }}</td><td>{% if s.pilot %}<span class="chip" style="background:#FFE600;color:#1A1A24;border-color:#FFE600">{{ s.pilot }}</span>{% endif %}</td><td class="small">{{ s.pilot_wb or '' }}</td></tr>{% endfor %}</tbody>
+      <tbody>{% for s in states|sort(attribute='enrolled', reverse=True) %}<tr data-code="{{ s.code }}" style="cursor:pointer" tabindex="0" role="button" aria-label="Open {{ s.name }} detail"><td>{{ s.name }}</td><td class="num" data-v="{{ s.enrolled }}">{{ '{:,}'.format(s.enrolled) }}</td><td class="num" data-v="{{ s.certified }}">{{ '{:,}'.format(s.certified) }}</td><td class="num" data-v="{{ s.rate }}">{{ s.rate }}</td><td>{% if s.pilot %}<span class="chip" style="background:#FFE600;color:#1A1A24;border-color:#FFE600">{{ s.pilot }}</span>{% endif %}</td><td class="small">{{ s.pilot_wb or '' }}</td></tr>{% endfor %}</tbody>
     </table></div>
   </div>
 </section>
@@ -79,7 +79,11 @@ document.addEventListener("DOMContentLoaded", () => {
   drawMap(); drawStack();
   document.querySelectorAll("#ord button").forEach(b => b.addEventListener("click", () => { document.querySelectorAll("#ord button").forEach(x => x.classList.remove("on")); b.classList.add("on"); ORD = b.dataset.o; drawStack(); }));
   document.querySelectorAll("#metric button").forEach(b => b.addEventListener("click", () => { document.querySelectorAll("#metric button").forEach(x => x.classList.remove("on")); b.classList.add("on"); metric = b.dataset.m; drawMap(); }));
-  document.querySelectorAll("#stTbl tbody tr").forEach(tr => tr.addEventListener("click", () => open(tr.dataset.code)));
+  document.querySelectorAll("#stTbl tbody tr").forEach(tr => {
+    tr.addEventListener("click", () => open(tr.dataset.code));
+    tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(tr.dataset.code); } });
+  });
+  expStates.addEventListener("click", () => Tower.exportTableCSV("#stTbl", "fsp_states.csv"));
 });
 </script>
 {% endblock %}

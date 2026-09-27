@@ -87,12 +87,7 @@ function nodeDetail(b, n) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => {
-    document.querySelectorAll("#tabs button").forEach(x => x.classList.remove("on")); b.classList.add("on");
-    ["tree", "pestle", "stake"].forEach(t => document.getElementById("tab-" + t).classList.toggle("hide", t !== b.dataset.t));
-    if (b.dataset.t === "pestle") drawPestle();
-    if (b.dataset.t === "stake") drawStake();
-  }));
+  Tower.tabs("#tabs", { tabs: ["tree", "pestle", "stake"], onShow: t => { if (t === "pestle") drawPestle(); if (t === "stake") drawStake(); } });
   document.querySelectorAll(".tree-node").forEach(el => el.addEventListener("click", () => nodeDetail(+el.dataset.b, +el.dataset.n)));
   document.querySelectorAll("#stFilter button").forEach(b => b.addEventListener("click", () => {
     document.querySelectorAll("#stFilter button").forEach(x => x.classList.remove("on")); b.classList.add("on");
