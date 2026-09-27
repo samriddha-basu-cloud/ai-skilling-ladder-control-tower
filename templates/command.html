@@ -40,11 +40,11 @@
 </section>
 
 <section class="g g-5">
-  <div class="tile"><div class="l">VACR, active scenario {{ tag('tgt') }}</div><div class="v">{{ k.vacr }}<small>%</small></div><div class="d"><span class="{{ 'up' if k.vacr >= 40 else 'down' }}">Target ≥40%</span> {{ active_scenario.name }}</div></div>
-  <div class="tile"><div class="l">Verified converts in pilot {{ tag('ass') }}</div><div class="v">{{ '{:,}'.format(sim.verified) }}</div><div class="d">of {{ '{:,}'.format(sim.params.entrants) }} entrants</div></div>
-  <div class="tile"><div class="l">Cost per verified convert {{ tag('der') }}</div><div class="v">₹{{ '{:,}'.format(sim.econ.cost_per_convert or 0) }}</div><div class="d"><span class="{{ 'up' if (sim.econ.cost_per_convert or 9e9) <= sim.econ.band else 'down' }}">Band ≤₹{{ '{:,}'.format(sim.econ.band) }}</span></div></div>
-  <div class="tile"><div class="l">Break-even, months of earnings {{ tag('der') }}</div><div class="v">{{ sim.econ.months_of_earnings }}</div><div class="d">at ₹24,434/month urban salaried {{ src(['S30']) }}</div></div>
-  <div class="tile"><div class="l">Evidence gates passed</div><div class="v">{{ sim.gates_passed }}<small>/ 6</small></div><div class="d">{% for g in sim.gates %}<span class="chip" style="padding:0 6px" title="{{ g.id }} {{ 'pass' if g.pass else 'fail' }}"><i style="background:{{ '#2DB757' if g.pass else '#FF4136' }}"></i>{{ g.id }}{{ sr(' ' + ('Pass' if g.pass else 'Fail')) }}</span>{% endfor %}</div></div>
+  <div class="tile" title="Verified Applied Competency Rate: the North Star metric, workplace-verified ÷ entrants"><div class="l">VACR, active scenario {{ tag('tgt') }}</div><div class="v">{{ k.vacr }}<small>%</small></div><div class="d"><span class="{{ 'up' if k.vacr >= 40 else 'down' }}">Target ≥40%</span> {{ active_scenario.name }}</div></div>
+  <div class="tile" title="Entrants who complete, are assessed competent, transition, and are employer-verified"><div class="l">Verified converts in pilot {{ tag('ass') }}</div><div class="v">{{ '{:,}'.format(sim.verified) }}</div><div class="d">of {{ '{:,}'.format(sim.params.entrants) }} entrants</div></div>
+  <div class="tile" title="Total pilot spend divided by verified converts; must stay within the affordability band"><div class="l">Cost per verified convert {{ tag('der') }}</div><div class="v">₹{{ '{:,}'.format(sim.econ.cost_per_convert or 0) }}</div><div class="d"><span class="{{ 'up' if (sim.econ.cost_per_convert or 9e9) <= sim.econ.band else 'down' }}">Band ≤₹{{ '{:,}'.format(sim.econ.band) }}</span></div></div>
+  <div class="tile" title="Cost per convert expressed as months of average urban salaried earnings recovered"><div class="l">Break-even, months of earnings {{ tag('der') }}</div><div class="v">{{ sim.econ.months_of_earnings }}</div><div class="d">at ₹24,434/month urban salaried {{ src(['S30']) }}</div></div>
+  <div class="tile" title="The six pass/fail checks on KPIs and gates that decide whether to scale the pilot"><div class="l">Evidence gates passed</div><div class="v">{{ sim.gates_passed }}<small>/ 6</small></div><div class="d">{% for g in sim.gates %}<span class="chip" style="padding:0 6px" title="{{ g.name }}: {{ 'pass' if g.pass else 'fail' }}"><i style="background:{{ '#2DB757' if g.pass else '#FF4136' }}"></i>{{ g.id }}{{ sr(' ' + ('Pass' if g.pass else 'Fail')) }}</span>{% endfor %}</div></div>
 </section>
 
 <section class="g g-8-4">
@@ -111,10 +111,10 @@
 </section>
 
 <section class="g g-4">
-  <a class="tile" href="/exposure" style="text-decoration:none"><div class="l">EY AIdea of India 2025 {{ tag('ben') }}</div><div class="v">{{ demand.auto }}% | {{ demand.aug }}%</div><div class="d">task time fully automatable | sharply reduced <span class="srcref">S23</span></div></a>
-  <a class="tile" href="/strategy" style="text-decoration:none"><div class="l">₹6,500 Cr five-year envelope {{ tag('ass') }}</div><div class="v">₹{{ '{:,}'.format(env.per_role_ready) }}</div><div class="d">per role-ready learner; central share {{ env.central_pct_msde }}% of MSDE FY27</div></a>
-  <a class="tile" href="/value" style="text-decoration:none"><div class="l">Long-Term Value balance {{ tag('ass') }}</div><div class="v">{{ ltv.balance }}<small>%</small></div><div class="d">human {{ ltv.realised.human }}, citizen {{ ltv.realised.citizen }}, societal {{ ltv.realised.societal }}, financial {{ ltv.realised.financial }}</div></a>
-  <a class="tile" href="/operating" style="text-decoration:none"><div class="l">Change readiness (Humans@Center) {{ tag('ass') }}</div><div class="v">{{ chg.readiness }}</div><div class="d">{{ chg.band }}; weakest: {{ chg.weakest|join(', ') }}</div></a>
+  <a class="tile" href="/exposure" style="text-decoration:none" title="Open the Job exposure lab"><div class="l">EY AIdea of India 2025 {{ tag('ben') }}</div><div class="v">{{ demand.auto }}% | {{ demand.aug }}%</div><div class="d">task time fully automatable | sharply reduced <span class="srcref">S23</span></div></a>
+  <a class="tile" href="/strategy" style="text-decoration:none" title="Open the Strategy lab for the five-year funding envelope"><div class="l">₹6,500 Cr five-year envelope {{ tag('ass') }}</div><div class="v">₹{{ '{:,}'.format(env.per_role_ready) }}</div><div class="d">per role-ready learner; central share {{ env.central_pct_msde }}% of MSDE FY27</div></a>
+  <a class="tile" href="/value" style="text-decoration:none" title="Open the Long-term value page"><div class="l">Long-Term Value balance {{ tag('ass') }}</div><div class="v">{{ ltv.balance }}<small>%</small></div><div class="d">human {{ ltv.realised.human }}, citizen {{ ltv.realised.citizen }}, societal {{ ltv.realised.societal }}, financial {{ ltv.realised.financial }}</div></a>
+  <a class="tile" href="/operating" style="text-decoration:none" title="Open the Operating model page"><div class="l">Change readiness (Humans@Center) {{ tag('ass') }}</div><div class="v">{{ chg.readiness }}</div><div class="d">{{ chg.band }}; weakest: {{ chg.weakest|join(', ') }}</div></a>
 </section>
 {% endblock %}
 

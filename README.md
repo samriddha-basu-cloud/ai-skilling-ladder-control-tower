@@ -1,8 +1,8 @@
-# AI Skill Ladder 3.0 Control Tower
+# AI Skill Ladder Control Tower
 
 EY Young Leaders 2026, Final Round. Team Vertex.
 
-A Flask decision tool aligned to the AI Skill Ladder 3.0 deck and the team's evidence workbook. The thesis: India has built the AI-learning rails; build the bridge from learning to verified work. It is a conversion problem, not an access problem.
+A Flask decision tool aligned to the AI Skill Ladder deck and the team's evidence workbook. The thesis: India has built the AI-learning rails; build the bridge from learning to verified work. It is a conversion problem, not an access problem.
 
 ## Run it
 

@@ -7,7 +7,7 @@
   </div>
   <div class="demo-bar" id="demoBar">
     {% for d in demos %}
-    <button class="demo-card" type="button" data-d="{{ loop.index0 }}"><span class="n">{{ loop.index }}</span><b>{{ d.title }}</b><p class="small muted mt-8">{{ d.question }}</p><p class="small mt-8">{{ d.steps|length }} steps</p></button>
+    <button class="demo-card" type="button" data-d="{{ loop.index0 }}" title="Play this guided demo step by step"><span class="n">{{ loop.index }}</span><b>{{ d.title }}</b><p class="small muted mt-8">{{ d.question }}</p><p class="small mt-8">{{ d.steps|length }} steps</p></button>
     {% endfor %}
   </div>
   <div class="demo-stage mt-12" id="demoStage" hidden>
@@ -54,9 +54,9 @@
       </table></div>
     </details>
     <div class="row mt-16 no-print" style="flex-wrap:wrap;gap:8px">
-      <button class="btn primary" id="applyBtn">Apply to tower</button>
-      <button class="btn" id="saveBtn">Save as scenario</button>
-      <a class="btn ghost" href="/export/scenario.csv">CSV</a><a class="btn ghost" href="/export/scenario.json">JSON</a>
+      <button class="btn primary" id="applyBtn" title="Make this the active scenario across every page, as an unsaved draft">Apply to tower</button>
+      <button class="btn" id="saveBtn" title="Give this configuration a name and keep it in Compare scenarios">Save as scenario</button>
+      <a class="btn ghost" href="/export/scenario.csv" title="Download this scenario's funnel as a CSV file">CSV</a><a class="btn ghost" href="/export/scenario.json" title="Download this scenario's parameters as a JSON file">JSON</a>
     </div>
   </div>
 
@@ -110,7 +110,7 @@
 
 <section class="panel" id="mc">
   <div class="panel-h"><div><h2>Monte Carlo: how likely is the pilot to pass?</h2><div class="sub">1,000 pilots with stage rates, employer satisfaction, women's relative conversion and unit costs drawn from triangular ranges around the settings above {{ tag('ass') }}</div></div>
-    <div class="actions"><button class="btn primary" id="mcBtn">Run 1,000 pilots</button></div></div>
+    <div class="actions"><button class="btn primary" id="mcBtn" title="Simulate 1,000 pilots with randomised stage rates to estimate pass probability">Run 1,000 pilots</button></div></div>
   <div class="g g-3">
     <div><div class="tile"><div class="l">P(VACR ≥40%)</div><div class="v"><span id="mP">–</span><small>%</small></div><div class="d" id="mPd">Run the simulation</div></div>
       <div class="tile mt-12"><div class="l">P(all gates G2 to G6 pass)</div><div class="v"><span id="mA">–</span><small>%</small></div><div class="d" id="mAd"></div></div>
@@ -121,7 +121,7 @@
 </section>
 
 <section class="panel">
-  <div class="panel-h"><div><h2>Compare scenarios</h2><div class="sub">Select up to five</div></div><div class="actions"><button class="btn" id="cmpBtn">Compare</button></div></div>
+  <div class="panel-h"><div><h2>Compare scenarios</h2><div class="sub">Select up to five</div></div><div class="actions"><button class="btn" id="cmpBtn" title="Redraw the chart below for the checked scenarios">Compare</button></div></div>
   <div class="pill-row" id="cmpList">{% for s in scenarios %}<label class="chip" style="cursor:pointer"><input type="checkbox" value="{{ s.id }}" {% if s.preset %}checked{% endif %}> {{ s.name }}{% if not s.preset and s.owned %} <a href="#" class="del" data-id="{{ s.id }}" title="Delete" style="margin-left:4px">x</a>{% endif %}</label>{% endfor %}</div>
   <div class="chart h-300 mt-16"><canvas id="cmpChart"></canvas></div>
 </section>

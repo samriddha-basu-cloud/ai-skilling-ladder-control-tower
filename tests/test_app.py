@@ -8,6 +8,10 @@ from app import app as flask_app
 def client():
     flask_app.config["TESTING"] = True
     with flask_app.test_client() as c:
+        c.get("/")
+        with c.session_transaction() as sess:
+            token = sess["csrf"]
+        c.environ_base["HTTP_X_CSRF_TOKEN"] = token
         yield c
 
 

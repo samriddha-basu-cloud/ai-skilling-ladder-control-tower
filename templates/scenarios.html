@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel beam-top">
+  <div class="panel-h"><div><h2>Four planning scenarios, plain language</h2>
+    <div class="sub">These four names recur across the Pilot simulator, Strategy lab and Compare scenarios chart. This page explains what each one means and why it exists, without the jargon.</div></div></div>
+  <p class="small muted">Every number below comes from the same conversion model as the Pilot simulator, run once for each scenario's stage rates. Nothing here is a Government of India allocation or a forecast.</p>
+</section>
+
+<div class="g g-2">
+  {% for r in rows %}
+  <div class="panel" id="{{ r.id }}">
+    <div class="panel-h">
+      <div><h2>{{ r.name }}</h2><div class="sub">{{ r.plain }}</div></div>
+      <div class="actions"><span class="rag {{ 'green' if r.sim.gates_passed == 6 else 'amber' if r.sim.gates_passed >= 3 else 'red' }}">{{ r.sim.gates_passed }}/6 gates</span></div>
+    </div>
+    <p class="small" style="font-style:italic;color:var(--text-2)" title="A simple everyday comparison, not part of the model">{{ r.analogy }}</p>
+    <div class="g g-3 mt-12">
+      <div class="tile"><div class="l">VACR</div><div class="v">{{ r.sim.kpi.vacr }}<small>%</small></div><div class="d">target ≥40%</div></div>
+      <div class="tile"><div class="l">Completion</div><div class="v">{{ r.sim.kpi.completion }}<small>%</small></div></div>
+      <div class="tile"><div class="l">Competency</div><div class="v">{{ r.sim.kpi.competency }}<small>%</small></div></div>
+    </div>
+    <details class="mt-12">
+      <summary class="small" style="cursor:pointer" title="The exact stage rates behind this scenario">How this scenario is built</summary>
+      <p class="small muted mt-8">{{ r.note }}</p>
+    </details>
+    <h4 class="mt-16" style="font-size:12.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em">Where you'll see this in the tower</h4>
+    <ul class="small" style="margin:8px 0 0;padding-left:18px;display:grid;gap:4px;color:var(--text-2)">
+      {% for s in r.seen_in %}<li>{{ s }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+
+<section class="panel">
+  <div class="panel-h"><div><h2>How to read them together</h2></div></div>
+  <p class="small">"Today's system" is the floor: it is roughly what happens with no new intervention. "Targets at their floors" is a warning, not a plan: it shows the published targets don't add up to VACR 40% by themselves unless downstream stages are almost perfect. "Operating plan with buffer" is what the team actually proposes running, sitting above the floors with headroom to absorb normal slippage. "Stretch plan" is the ceiling if every intervention performs at its best observed rate. Use the <a href="/simulator">Pilot simulator</a>'s preset buttons to switch between them live, or the <a href="/simulator#mc">Compare scenarios</a> chart to see all four side by side.</p>
+</section>
+{% endblock %}

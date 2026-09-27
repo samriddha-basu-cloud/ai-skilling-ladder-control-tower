@@ -1,5 +1,5 @@
 """
-Pilot engine for the AI Skill Ladder 3.0 Control Tower.
+Pilot engine for the AI Skill Ladder Control Tower.
 
 The model is deliberately a transparent conversion funnel, not an ROI projection:
   entrants -> completed -> competent (independent assessment) -> transitioned (apprenticeship / project / deployment)
@@ -37,6 +37,35 @@ PRESETS = {
                     "params": {"completion": 0.583, "competency": 0.60, "uptake": 0.30, "validation": 0.70, "women_entry": 0.41, "employer_sat": 0.65}},
     "stretch": {"name": "Stretch plan", "note": "Upper-end rates if hubs, apprenticeships and outcome payments all land.",
                 "params": {"completion": 0.80, "competency": 0.78, "uptake": 0.88, "validation": 0.90, "employer_sat": 0.86}},
+}
+
+# Plain-language explainers for the four planning scenarios above (see /scenarios).
+SCENARIO_EXPLAINERS = {
+    "operating_plan": {
+        "plain": "The plan the team actually recommends running. Every stage rate is set a little above the bare minimum needed, so a normal amount of bad luck or slippage still lands on target.",
+        "analogy": "Like leaving 15 minutes early for a train instead of timing it to the minute.",
+        "seen_in": ["Pilot simulator: the default preset and the starting point for every guided demo",
+                    "Strategy lab: the \"3.0 portfolio\" state selection",
+                    "KPIs and gates: the baseline each gate is tested against"],
+    },
+    "targets_at_floor": {
+        "plain": "What happens if every stage hits its published target exactly, with zero headroom. It is a stress test, not a plan: it shows the published floors don't add up to the 40% VACR goal on their own.",
+        "analogy": "Like a bus schedule with no slack: one late connection and the whole trip fails.",
+        "seen_in": ["Pilot simulator: the \"Targets at their floors\" preset and demo 2 (\"Do the targets add up?\")",
+                    "KPIs and gates: the consistency-check alert on the floors"],
+    },
+    "today_proxy": {
+        "plain": "An illustrative estimate of how today's system performs if you carry forward FSP's known completion rate and assume the weak, unpublished downstream numbers implied by the case. It is the \"do nothing new\" baseline.",
+        "analogy": "The line you'd draw if you just extended what's already happening, with no new interventions.",
+        "seen_in": ["Pilot simulator: the \"Today's system (illustrative)\" preset and the start of demo 1",
+                    "Compare scenarios chart: shown alongside the other three plans"],
+    },
+    "stretch": {
+        "plain": "The optimistic upper bound: every intervention lands, hubs and apprenticeships run at their best observed rates, and outcome payments work as designed. Useful as a ceiling, not a forecast.",
+        "analogy": "The best-case finish time you'd only hit if every light turned green.",
+        "seen_in": ["Pilot simulator: the \"Stretch plan\" preset",
+                    "Compare scenarios chart: the upper line against the operating plan"],
+    },
 }
 
 

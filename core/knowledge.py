@@ -10,7 +10,7 @@ Brief: as EY consultants appointed by the Government of India, build an "AI skil
 Final round: max 8 slides, 10 MB, 12 min + 5 min Q&A; executive summary of prelim; challenges on an urgency vs impact matrix; 5-7 recommendations deployable nationally from basic digital literacy to advanced AI, with infrastructure and ecosystem implications; phased implementation plan with timelines, resources, stakeholders and challenges; KPIs. Assumptions must be reasoned. Judged on contextualisation, depth of research, storyboarding, creativity; EY values human perspective.
 Team Vertex: Samriddha Basu, Souraj Roy.
 
-THE SOLUTION (AI Skill Ladder 3.0): India has built the AI-learning rails; build the outcome bridge. It is a conversion problem, not an access problem.
+THE SOLUTION (AI Skill Ladder): India has built the AI-learning rails; build the outcome bridge. It is a conversion problem, not an access problem.
 Journey: Diagnose → Learn → Demonstrate → Apply → Recognise → Move (work) → Refresh. Each step writes evidence to the AI Skill Passport. AI runs the system; humans make every high-stakes call.
 North Star: VACR = learners achieving verified workplace competency ÷ learners entering × 100; pilot target ≥40%.
 Money: ₹290 Cr 12-18-month proof of value in 7 states (TN, AP volume; KA, OD conversion; UP scale; Bihar, Assam catch-up incl. North-East), each paired with a comparison district. ₹6,500 Cr five-year convergence envelope. All budgets are internal case assumptions, not GoI allocations. No manufactured ROI: break-even test only.

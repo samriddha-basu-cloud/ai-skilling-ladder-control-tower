@@ -251,7 +251,7 @@ a.chip:hover { border-color: var(--beam); color: var(--text); }
 .basis { font-size: 10.5px; padding: 1px 6px; border-radius: 3px; border: 1px dashed var(--line); color: var(--text-3); }
 .btn {
   display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 6px;
-  border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; font-weight: 600; font-size: 13px; text-decoration: none;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; font-weight: 600; font-size: 13px; text-decoration: none;
   transition: border-color .15s var(--ease), background-color .15s var(--ease), transform .15s var(--ease), box-shadow .15s var(--ease);
 }
 .btn:hover { border-color: var(--text-3); }
@@ -360,7 +360,9 @@ a.alert:hover { outline: 1px solid var(--line); background: var(--line-soft); }
 .lever .satbar { height: 3px; background: var(--line-soft); margin-top: 6px; border-radius: 2px; overflow: hidden; }
 .lever .satbar span { display: block; height: 100%; background: var(--text-3); }
 .lever .hint { font-size: 11.5px; color: var(--text-3); margin-top: 4px; display: flex; justify-content: space-between; }
-input[type=range] { width: 100%; accent-color: var(--beam); margin-top: 8px; height: 20px; }
+input[type=range] { width: 100%; accent-color: var(--beam); margin-top: 8px; height: 20px; background: transparent; }
+input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--line); }
+input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line); }
 .envelope { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 8px; background: var(--panel-2); margin-bottom: 8px; }
 .envelope .meter { flex: 1; height: 8px; background: var(--line-soft); border-radius: 4px; overflow: hidden; }
 .envelope .meter span { display: block; height: 100%; background: var(--beam); transition: width .2s; }

@@ -1,4 +1,4 @@
-/* AI Skill Ladder 3.0 Control Tower: shared client runtime */
+/* AI Skill Ladder Control Tower: shared client runtime */
 (function () {
   const root = document.documentElement;
   const saved = (() => { try { return localStorage.getItem("tower-theme"); } catch (e) { return null; } })();
@@ -182,6 +182,7 @@
     },
     sortable(table) {
       table.querySelectorAll("th.sortable").forEach((th, idx) => {
+        if (!th.title) th.title = `Sort by ${th.textContent.trim()}`;
         th.setAttribute("aria-sort", "none");
         th.addEventListener("click", () => {
           const col = [...th.parentNode.children].indexOf(th);
@@ -394,5 +395,12 @@
     document.addEventListener("keydown", e => { if (e.key === "Escape") { Tower.drawer.close(); document.body.classList.remove("nav-open"); } });
 
     document.querySelectorAll("table.tbl").forEach(t => Tower.sortable(t));
+
+    document.querySelectorAll(".form-row input[type=range]").forEach(inp => {
+      if (inp.title) return;
+      const label = inp.closest(".form-row").querySelector("label");
+      if (label) inp.title = label.textContent.trim();
+    });
+    document.querySelectorAll("[data-p], .preset").forEach(el => { if (!el.title && el.dataset.p) el.title = "Apply the " + el.textContent.trim() + " preset"; });
   });
 })();
