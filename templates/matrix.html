@@ -4,9 +4,14 @@
 <section class="g g-8-4">
   <div class="panel">
     <div class="panel-h">
-      <div><h2>Urgency × impact</h2><div class="sub">Qualitative team assessment on scale, economic value, time-sensitivity, feasibility and people affected; not an external score. {{ tag('ass') }} Select a bubble.</div></div>
+      <div><h2>Urgency × impact</h2><div class="sub">Qualitative team assessment on scale, economic value, time-sensitivity, feasibility and people affected; not an external score. {{ tag('ass') }} Select a bubble, or use the list and table below.</div></div>
+      <div class="actions no-print"><button class="btn ghost" id="toggleMatrixTbl" type="button" aria-expanded="false">View as table</button><button class="btn ghost" id="expMatrix" type="button">Export CSV</button></div>
     </div>
     <div class="matrix-wrap"><canvas id="matrixChart" aria-label="Urgency versus impact matrix"></canvas></div>
+    <div class="tbl-wrap hide mt-12" id="matrixTblWrap"><table class="tbl" id="matrixTbl">
+      <thead><tr><th class="sortable">Priority</th><th class="sortable num">Urgency</th><th class="sortable num">Impact</th><th class="sortable">Quadrant</th><th>Interventions</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
     {{ cite([], 'Qualitative team placement; failure-mode evidence below carries source IDs') }}
     <div class="row mt-12">
       <div class="form-row" style="min-width:200px;flex:1"><label for="uCut">Urgency threshold <b id="uVal">7.0</b></label><input type="range" id="uCut" min="5" max="9" step="0.1" value="7"></div>
@@ -73,14 +78,24 @@ function render() {
     plugins: [plug] });
   const g = { "Act now": [], "Build steadily": [], "Quick wins": [], "Sustain": [] };
   PR.forEach((p, i) => g[quad(p.urgency, p.impact)].push([p, i]));
-  quadLists.innerHTML = Object.entries(g).map(([q, l]) => `<div style="margin-bottom:16px"><h3><i style="width:10px;height:10px;border-radius:50%;background:${QC[q]};display:inline-block"></i>${q} <span class="muted small">(${l.length})</span></h3><ul>${l.map(([p, i]) => `<li data-i="${i}"><span>${p.name}</span><span class="muted">${p.levers.join(" ")}</span></li>`).join("") || '<li class="muted">None</li>'}</ul></div>`).join("");
-  document.querySelectorAll("#quadLists li[data-i]").forEach(li => li.addEventListener("click", () => openItem(+li.dataset.i)));
+  quadLists.innerHTML = Object.entries(g).map(([q, l]) => `<div style="margin-bottom:16px"><h3><i style="width:10px;height:10px;border-radius:50%;background:${QC[q]};display:inline-block"></i>${q} <span class="muted small">(${l.length})</span></h3><ul>${l.map(([p, i]) => `<li data-i="${i}" tabindex="0" role="button" aria-label="Open ${p.name} detail"><span>${p.name}</span><span class="muted">${p.levers.join(" ")}</span></li>`).join("") || '<li class="muted">None</li>'}</ul></div>`).join("");
+  document.querySelectorAll("#quadLists li[data-i]").forEach(li => {
+    li.addEventListener("click", () => openItem(+li.dataset.i));
+    li.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openItem(+li.dataset.i); } });
+  });
+  document.querySelector("#matrixTbl tbody").innerHTML = PR.map((p, i) => `<tr><td><b>${p.name}</b></td><td class="num">${p.urgency}</td><td class="num">${p.impact}</td><td>${quad(p.urgency, p.impact)}</td><td>${p.levers.join(", ") || "–"}</td></tr>`).join("");
 }
 document.addEventListener("DOMContentLoaded", () => {
   render();
   const uCut_el = document.getElementById("uCut"), iCut_el = document.getElementById("iCut");
   uCut_el.addEventListener("input", e => { uCut = +e.target.value; uVal.textContent = uCut.toFixed(1); render(); });
   iCut_el.addEventListener("input", e => { iCut = +e.target.value; iVal.textContent = iCut.toFixed(1); render(); });
+  toggleMatrixTbl.addEventListener("click", () => {
+    const open = matrixTblWrap.classList.toggle("hide") === false;
+    toggleMatrixTbl.setAttribute("aria-expanded", String(open));
+    toggleMatrixTbl.textContent = open ? "Hide table" : "View as table";
+  });
+  expMatrix.addEventListener("click", () => Tower.exportTableCSV("#matrixTbl", "priority_matrix.csv"));
 });
 </script>
 {% endblock %}

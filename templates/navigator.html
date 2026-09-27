@@ -19,7 +19,7 @@
     <div class="q">
       <p id="{{ q.id }}-l">{{ q.text }}</p>
       <div class="seg" role="radiogroup" aria-labelledby="{{ q.id }}-l" data-q="{{ q.id }}">
-        {% for o in q.options %}<button type="button" role="radio" data-v="{{ loop.index0 }}" class="{{ 'on' if (loop.index0 == 1 and q.id in ['q1','q2']) or (loop.index0 == 0 and q.id not in ['q1','q3']) else '' }}" aria-checked="false" title="{{ o }}">{{ o }}</button>{% endfor %}
+        {% for o in q.options %}{% set on = (loop.index0 == 1 and q.id in ['q1','q2']) or (loop.index0 == 0 and q.id not in ['q1','q3']) %}<button type="button" role="radio" data-v="{{ loop.index0 }}" class="{{ 'on' if on else '' }}" aria-checked="{{ 'true' if on else 'false' }}" tabindex="{{ '0' if on else '-1' }}" title="{{ o }}">{{ o }}</button>{% endfor %}
       </div>
     </div>
     {% endfor %}
@@ -101,8 +101,25 @@ function render(r) {
 function lastBody() {
   return { age: +age.value, education: education.value, occupation: occupation.value, state: state.value, language: language.value, answers: answers(), pace: LAST_R ? LAST_R.pace : "standard" };
 }
+function selectRadio(b) {
+  b.parentNode.querySelectorAll("button").forEach(x => { x.classList.remove("on"); x.setAttribute("aria-checked", "false"); x.tabIndex = -1; });
+  b.classList.add("on"); b.setAttribute("aria-checked", "true"); b.tabIndex = 0;
+}
 document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".seg[data-q] button").forEach(b => b.addEventListener("click", () => { b.parentNode.querySelectorAll("button").forEach(x => { x.classList.remove("on"); x.setAttribute("aria-checked", "false"); }); b.classList.add("on"); b.setAttribute("aria-checked", "true"); }));
+  document.querySelectorAll(".seg[data-q] button").forEach(b => b.addEventListener("click", () => selectRadio(b)));
+  document.querySelectorAll(".seg[data-q]").forEach(group => {
+    const btns = [...group.querySelectorAll("button")];
+    group.addEventListener("keydown", e => {
+      const i = btns.indexOf(document.activeElement);
+      if (i === -1) return;
+      let j = null;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") j = (i + 1) % btns.length;
+      else if (e.key === "ArrowLeft" || e.key === "ArrowUp") j = (i - 1 + btns.length) % btns.length;
+      else if (e.key === "Home") j = 0;
+      else if (e.key === "End") j = btns.length - 1;
+      if (j !== null) { e.preventDefault(); selectRadio(btns[j]); btns[j].focus(); }
+    });
+  });
   navForm.addEventListener("submit", async e => {
     e.preventDefault();
     const body = { age: +age.value, education: education.value, occupation: occupation.value, state: state.value, language: language.value, answers: answers() };

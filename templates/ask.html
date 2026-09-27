@@ -6,6 +6,7 @@
       <div><h2>Ask the Tower</h2><div class="sub">Strategy analyst for AI Skill Ladder. With a key it reasons with Claude and runs the tower's live model; without one it answers from the built-in rules engine.</div></div>
       <div class="actions">
         <span class="chip" id="modeChip"><i style="background:{{ '#2DB757' if cstat.connected else '#FFE600' }}"></i>{{ 'Claude connected' if cstat.connected else 'Rules engine' }}</span>
+        <button class="btn ghost" id="exportChat" type="button">Export chat</button>
         <button class="btn ghost" id="newChat" type="button">New chat</button>
       </div>
     </div>
@@ -13,6 +14,7 @@
     <form class="chat-in" id="askForm">
       <textarea class="input" id="q" rows="2" placeholder="Ask anything about the case, the solution, the numbers or the panel" maxlength="4000" aria-label="Your question" style="height:auto;min-height:48px;padding:12px;resize:vertical"></textarea>
       <button class="btn primary" type="submit" id="sendBtn" style="height:48px">Ask</button>
+      <button class="btn ghost hide" type="button" id="cancelBtn" style="height:48px">Cancel</button>
     </form>
     <div class="sugg mt-12" id="sugg">
       {% for s in ["Summarise AI Skill Ladder in 60 seconds for the panel", "Why is VACR 40% hard at the target floors?", "Probability the pilot passes all gates?", "Why Bihar and Assam in the pilot?", "Grill me like an EY partner on the ₹290 Cr pilot", "What if completion is only 65%?", "How does the plan map to the SDGs?", "Place a 45-year-old bank clerk in Lucknow on the ladder"] %}
@@ -105,16 +107,18 @@ function renderHistory() {
   HISTORY.forEach(h => bubble(h.role, h.content, h.meta));
 }
 
+let inflight = null;
 async function ask(text) {
   text = (text || "").trim(); if (!text) return;
   bubble("user", text);
   const prior = HISTORY.filter(h => h.meta?.source !== "error").map(h => ({ role: h.role, content: h.content }));
   HISTORY.push({ role: "user", content: text }); save();
-  sendBtn.disabled = true;
+  sendBtn.disabled = true; cancelBtn.classList.remove("hide");
   const wait = bubble("assistant", "Thinking and running the model…");
   wait.classList.add("thinking");
+  const ctrl = new AbortController(); inflight = ctrl;
   try {
-    const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q: text, history: prior }) });
+    const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": Tower.csrfToken() }, body: JSON.stringify({ q: text, history: prior }), signal: ctrl.signal });
     const j = await r.json().catch(() => ({ error: "Unexpected response from the server." }));
     wait.remove();
     if (!r.ok) {
@@ -125,8 +129,19 @@ async function ask(text) {
       HISTORY.push({ role: "assistant", content: j.answer, meta: { source: j.source, model: j.model, tools: j.tools, links: j.links } });
     }
     save();
-  } catch (e) { wait.remove(); bubble("assistant", "Network error: " + e.message, { source: "error" }); }
-  sendBtn.disabled = false; document.getElementById("q").focus();
+  } catch (e) {
+    wait.remove();
+    if (e.name === "AbortError") bubble("assistant", "Request cancelled.", { source: "error" });
+    else bubble("assistant", "Network error: " + e.message, { source: "error" });
+  }
+  inflight = null;
+  sendBtn.disabled = false; cancelBtn.classList.add("hide"); document.getElementById("q").focus();
+}
+function exportChatText() {
+  const lines = HISTORY.map(h => (h.role === "user" ? "You: " : "Tower: ") + h.content);
+  const blob = new Blob([lines.join("\n\n")], { type: "text/plain;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "ask-the-tower-chat.txt";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 function setStatus(s) {
@@ -143,19 +158,19 @@ document.addEventListener("DOMContentLoaded", () => {
   qEl.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askForm.requestSubmit(); } });
   document.querySelectorAll("#sugg button").forEach(b => b.addEventListener("click", () => ask(b.textContent)));
   newChat.addEventListener("click", () => { HISTORY = []; save(); renderHistory(); });
+  exportChat.addEventListener("click", exportChatText);
+  cancelBtn.addEventListener("click", () => { if (inflight) inflight.abort(); });
   keyForm.addEventListener("submit", async e => {
     e.preventDefault();
     saveKey.disabled = true; saveKey.textContent = "Testing…";
     try {
-      const r = await fetch("/api/copilot/key", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: apiKey.value.trim(), model: document.getElementById("model").value, remember: remember.checked }) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error || "Could not save the key");
+      const j = await Tower.api("/api/copilot/key", { key: apiKey.value.trim(), model: document.getElementById("model").value, remember: remember.checked });
       apiKey.value = ""; setStatus(j); Tower.toast("Connected to Claude");
     } catch (err) { keyStatus.textContent = err.message; Tower.toast(err.message); }
     saveKey.disabled = false; saveKey.textContent = "Save and test";
   });
   clearKey.addEventListener("click", async () => {
-    const r = await fetch("/api/copilot/key", { method: "DELETE" }); setStatus(await r.json()); Tower.toast("Disconnected");
+    const j = await Tower.api("/api/copilot/key", null, "DELETE"); setStatus(j); Tower.toast("Disconnected");
   });
 });
 </script>

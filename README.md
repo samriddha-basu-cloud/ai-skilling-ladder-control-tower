@@ -33,6 +33,7 @@ Every figure carries one of five tags: Observed, Derived, Benchmark, Assumption,
 | | Long-term value | EY LTV scoring weighted by pilot budget share |
 | Decide | Strategy lab | VACR driver tree what-if, target consistency check, sensitivity, budget and envelope, break-even test, pilot portfolio on real FSP data |
 | | Pilot simulator | Edit entrants, stage rates, equity, unit costs and budget lines; funnel, six gates, Monte Carlo, save and compare scenarios |
+| | Stress test | Apply one of seven shocks to the active scenario (completion, competency, employer participation, cost, uptake, women/Tier-2/3 relative conversion) and see the cascade: shock → KPI hit → VACR → gates → decision |
 | | State view | Cartogram and table of PIB state-wise FSP data; drawer with ranks, gap to national 58.3% and suggested emphasis |
 | Deliver | Roadmap and risks | 60-month stage-gated Gantt, gate status, ₹290 Cr resources, risk register, RACI |
 | | KPIs and gates | VACR and pilot targets vs baseline and projection, results chain, Kirkpatrick-Phillips, SDG targets |
@@ -63,6 +64,19 @@ Presets: Operating plan with buffer (default, VACR ≈42%), Targets at their flo
 
 Key finding built into the tool: at the proposed target floors (completion 70% × competency 60%) VACR is capped at 42%, so reaching 40% needs about 95% downstream conversion. The operating plan runs completion ≈76% and competency ≈73% to make the targets consistent.
 
+## Decision engine
+
+`core/engine.decision(sim)` turns the six gates into one deterministic call — SCALE, HOLD, REDESIGN or STOP — never an opaque model: G1 (technical) failing holds everything; G4+G5 both failing stops; either failing alone, or G6 failing, redesigns; G2/G3 not yet clearing holds; all six passing scales. Each call carries a plain-English reason, the primary gate at fault, and (where one exists) which of the seven interventions addresses it. It is shown on the Command Centre and the KPI scorecard, and can be driven with `core/engine.bottleneck(sim)` (which funnel stage's ±5pp move swings VACR the most, from the model's own sensitivity, never hand-labelled) and stress-tested per shock below.
+
+## Testing
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+`tests/test_engine.py` covers the funnel maths, gate logic, decision engine (all four verdicts), the stress shocks and Monte Carlo bounds. `tests/test_app.py` smoke-tests every page and API endpoint, including malformed and out-of-range input, scenario CRUD, and that no hardcoded Flask secret ships.
+
 ## API
 
 | Method | Endpoint | Purpose |
@@ -70,6 +84,7 @@ Key finding built into the tool: at the proposed target floors (completion 70% �
 | POST | /api/simulate | Run the pilot model on `{"params": {...}}` |
 | POST | /api/montecarlo | Probability of VACR ≥40% and of all gates passing |
 | POST | /api/sensitivity | ±5 pp stage-rate sensitivity |
+| POST | /api/stress | Apply a named shock (`{"shock": "cost_up"}`) or all seven (`{"all": true}`) to the active scenario; returns before/after KPI, gates and decision |
 | POST | /api/compare | Compare saved or preset scenarios by id |
 | GET/POST/DELETE | /api/scenarios | List, save, delete scenarios (stored in instance/scenarios.json) |
 | POST | /api/active | Set active scenario or apply a draft |

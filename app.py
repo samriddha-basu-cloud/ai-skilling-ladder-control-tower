@@ -8,7 +8,9 @@ import csv
 import io
 import json
 import os
+import secrets
 import threading
+import time
 import uuid
 from datetime import datetime
 
@@ -26,21 +28,81 @@ STORE = os.path.join(BASE_DIR, "instance", "scenarios.json")
 _lock = threading.Lock()
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("TOWER_SECRET", "vertex-ai-skill-ladder-3")
+# No hardcoded secret fallback: use TOWER_SECRET in any deployment where sessions must survive a
+# restart, otherwise a fresh random key per process (sessions are non-sensitive: scenario choice
+# and a copilot client id, so a restart-time reset is an acceptable trade for not shipping a secret).
+app.config["SECRET_KEY"] = os.environ.get("TOWER_SECRET") or secrets.token_hex(32)
 app.config["JSON_SORT_KEYS"] = False
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 
 NAV_GROUPS = [
     ("Overview", [("command", "Command centre", "/")]),
     ("Diagnose", [("framing", "Problem framing", "/framing"), ("exposure", "Job exposure lab", "/exposure"), ("matrix", "Diagnosis matrix", "/matrix")]),
     ("Design", [("ladder", "Skill ladder", "/ladder"), ("interventions", "Seven interventions", "/interventions"),
                 ("operating", "Operating model", "/operating"), ("value", "Long-term value", "/value")]),
-    ("Decide", [("strategy", "Strategy lab", "/strategy"), ("simulator", "Pilot simulator", "/simulator"), ("states", "State view", "/states"),
-                ("scenarios", "Scenario guide", "/scenarios")]),
+    ("Decide", [("strategy", "Strategy lab", "/strategy"), ("simulator", "Pilot simulator", "/simulator"), ("stress", "Stress test", "/stress"),
+                ("states", "State view", "/states"), ("scenarios", "Scenario guide", "/scenarios")]),
     ("Deliver", [("roadmap", "Roadmap and risks", "/roadmap"), ("kpis", "KPIs and gates", "/kpis")]),
     ("Engage", [("navigator", "Pathway navigator", "/navigator"), ("ask", "Ask the Tower", "/ask")]),
     ("Evidence", [("sources", "Sources and data", "/sources"), ("brief", "Executive brief", "/brief")]),
 ]
 NAV = [i for _, items in NAV_GROUPS for i in items]
+
+
+def _build_search_index():
+    idx = [{"label": label, "sub": grp, "href": href, "type": "page"} for grp, items in NAV_GROUPS for _, label, href in items]
+    idx += [{"label": f"{i['id']} {i['title']}", "sub": "Intervention", "href": f"/interventions#{i['id']}", "type": "intervention"} for i in D.INTERVENTIONS]
+    idx += [{"label": f"{l['code']} {l['name']}", "sub": "Ladder level", "href": f"/ladder#{l['code']}", "type": "ladder"} for l in D.LADDER]
+    idx += [{"label": f"{g['id']} {g['name']}", "sub": "Evidence gate", "href": "/kpis", "type": "gate"} for g in D.GATES]
+    idx += [{"label": s["name"], "sub": f"State, {s['rate']}% certified of {s['enrolled']:,}", "href": "/states", "type": "state"} for s in D.STATES if s.get("enrolled", 0) > 0]
+    return idx
+
+
+SEARCH_INDEX = _build_search_index()
+
+
+# --------------------------------------------------------------------------------------
+# CSRF: a per-session token, echoed in a meta tag and required as a header on every
+# state-changing /api/ request. Defence in depth alongside the SameSite session cookie.
+# --------------------------------------------------------------------------------------
+def _csrf_token():
+    if "csrf" not in session:
+        session["csrf"] = uuid.uuid4().hex
+    return session["csrf"]
+
+
+@app.before_request
+def _csrf_protect():
+    if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.path.startswith("/api/"):
+        sent = request.headers.get("X-CSRF-Token", "")
+        if not sent or sent != session.get("csrf"):
+            return jsonify({"error": "Your session has expired. Reload the page and try again."}), 403
+
+
+@app.before_request
+def _apply_scenario_from_query():
+    if request.method == "GET" and not request.path.startswith(("/api/", "/static/", "/export/")):
+        sid = request.args.get("scenario")
+        if sid and get_scenario(sid):
+            session["scenario"] = sid
+            session.pop("draft", None)
+
+
+# --------------------------------------------------------------------------------------
+# Simple in-memory rate limiting for /api/ask (per browser session)
+# --------------------------------------------------------------------------------------
+_ask_hits = {}
+_ASK_LIMIT, _ASK_WINDOW = 20, 60
+
+
+def _rate_limited(key, limit=_ASK_LIMIT, window=_ASK_WINDOW):
+    now = time.time()
+    with _lock:
+        hits = [t for t in _ask_hits.get(key, []) if now - t < window]
+        hits.append(now)
+        _ask_hits[key] = hits
+        return len(hits) > limit
 
 
 # --------------------------------------------------------------------------------------
@@ -95,9 +157,13 @@ def _logo():
 
 @app.context_processor
 def inject():
-    return {"NAV_GROUPS": NAV_GROUPS, "NAV": NAV, "active_scenario": active(), "scenarios": all_scenarios(),
+    cid = _cid()
+    scs = all_scenarios()
+    for s in scs:
+        s["owned"] = s["preset"] or not s.get("owner") or s["owner"] == cid
+    return {"NAV_GROUPS": NAV_GROUPS, "NAV": NAV, "active_scenario": active(), "scenarios": scs,
             "now": datetime.now().strftime("%d %b %Y, %H:%M"), "CLASSES": D.CLASSES, "SRC": D.SRC,
-            "LOGO": _logo(), "INTS": D.INTERVENTIONS}
+            "LOGO": _logo(), "INTS": D.INTERVENTIONS, "CSRF": _csrf_token(), "SEARCH_INDEX": SEARCH_INDEX}
 
 
 def page(name, **kw):
@@ -114,7 +180,8 @@ def command():
     top_states = sorted([s for s in D.STATES if s["enrolled"] >= 20000], key=lambda s: -s["rate"])
     return render_template("command.html", page="command", title="Command centre", sim=sim, H=D.H, fsp=D.FSP_FUNNEL, soar=D.SOAR,
                            signals=E.signals(sim), env=E.envelope(), states=top_states, nat=D.FSP_STATE_TOTAL, demand=D.DEMAND,
-                           workforce=D.WORKFORCE, chg=I.change_index(), ltv=I.ltv(sim), fund=D.FSP_FUNDING, iti=D.ITI_GROWTH)
+                           workforce=D.WORKFORCE, chg=I.change_index(), ltv=I.ltv(sim), fund=D.FSP_FUNDING, iti=D.ITI_GROWTH,
+                           decision=E.decision(sim), bottleneck=E.bottleneck(sim))
 
 
 @app.route("/framing")
@@ -203,7 +270,13 @@ def roadmap():
 @app.route("/kpis")
 def kpis():
     sc, sim = active_sim()
-    return page("kpis", rows=E.kpi_scorecard(sim), sim=sim, kirk=F.KIRKPATRICK, sdgs=D.SDGS)
+    return page("kpis", rows=E.kpi_scorecard(sim), sim=sim, kirk=F.KIRKPATRICK, sdgs=D.SDGS, decision=E.decision(sim))
+
+
+@app.route("/stress")
+def stress():
+    sc, sim = active_sim()
+    return page("stress", sim=sim, shocks=E.SHOCKS, decision=E.decision(sim))
 
 
 @app.route("/navigator")
@@ -256,6 +329,19 @@ def api_sens():
     return jsonify(E.sensitivity(_body().get("params")))
 
 
+@app.post("/api/stress")
+def api_stress():
+    b = _body()
+    sc, sim = active_sim()
+    params = E.clean(b.get("params")) if b.get("params") else sim["params"]
+    if b.get("all"):
+        return jsonify({"shocks": [E.stress_test(params, s["id"]) for s in E.SHOCKS]})
+    shock = str(b.get("shock", ""))
+    if shock not in E.SHOCK_INDEX:
+        return jsonify({"error": "Unknown shock id."}), 400
+    return jsonify(E.stress_test(params, shock))
+
+
 @app.post("/api/compare")
 def api_compare():
     out = []
@@ -280,7 +366,7 @@ def api_save():
         return jsonify({"error": "Give the scenario a name before saving."}), 400
     sid = "sc-" + uuid.uuid4().hex[:8]
     rec = {"name": name, "note": (b.get("note") or "Saved from simulator")[:160], "params": E.clean(b.get("params")),
-           "created": datetime.now().isoformat(timespec="seconds")}
+           "created": datetime.now().isoformat(timespec="seconds"), "owner": _cid()}
     with _lock:
         st = _load_store()
         st[sid] = rec
@@ -298,6 +384,9 @@ def api_delete(sid):
         st = _load_store()
         if sid not in st:
             return jsonify({"error": "Scenario not found."}), 404
+        owner = st[sid].get("owner")
+        if owner and owner != _cid():
+            return jsonify({"error": "You can only delete scenarios you created on this browser."}), 403
         st.pop(sid)
         _save_store(st)
     if session.get("scenario") == sid:
@@ -394,8 +483,10 @@ def api_ask():
     q = str(b.get("q", "")).strip()[:4000]
     if not q:
         return jsonify({"error": "Type a question first."}), 400
-    sc, sim = active_sim()
     cid = _cid()
+    if _rate_limited(cid):
+        return jsonify({"error": "Too many questions in a short time. Wait a moment and try again."}), 429
+    sc, sim = active_sim()
     if C.get_cfg(cid):
         try:
             return jsonify(C.ask(cid, q, b.get("history") or [], sc["name"], sim))
@@ -457,6 +548,15 @@ def nf(_):
         return jsonify({"error": "Not found"}), 404
     return render_template("error.html", page=None, title="Not found", code=404,
                            message="This view does not exist. Use the navigation to return to the control tower."), 404
+
+
+@app.errorhandler(500)
+def server_error(e):
+    app.logger.exception("Unhandled server error")
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Something went wrong processing that request."}), 500
+    return render_template("error.html", page=None, title="Error", code=500,
+                           message="Something went wrong. Use the navigation to return to the control tower."), 500
 
 
 if __name__ == "__main__":
